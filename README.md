@@ -1,17 +1,19 @@
 # Family Tree Research
 
-A self-hosted family-tree / genealogy tool: draggable person cards, marriages,
-parent-child links, live sync, and PNG / PDF / JSON export.
+A self-hosted family-tree / genealogy tool with an interactive canvas, person directory,
+relationship lookup, timeline, research overview, and local or MariaDB storage.
 
 ## Live demo
 
 Static demo (no backend — runs entirely in the browser):
 **https://thenobody0817.github.io/family-tree/**
 
-Open it, then click **Export / Import → 🌱 Load sample family** to populate it.
+Open it, then click **Explore sample** to populate it.
 
 
-- `public/index.html` — the whole frontend (vanilla JS, no build step)
+- `public/index.html` — core frontend and existing editor (vanilla JS, no build step)
+- `public/workspace.js` and `public/workspace.css` — workspace navigation and visual design
+- `public/gedcom.js` — GEDCOM 5.5.1 core import/export
 - `public/api.php` — small REST API (PHP 8 + PDO)
 - `db/schema.sql` — MariaDB 10.6+ schema + helper views
 
@@ -22,8 +24,32 @@ Open it, then click **Export / Import → 🌱 Load sample family** to populate 
 | **Server** | `api.php` + MariaDB | local dev, your web host, shared/synced data |
 | **Local** | none (browser storage) | offline use, and the static **GitHub Pages demo** |
 
-Switch in the app: **⚙ API Settings → Storage Mode**. **JSON export/import**
+Switch in the app: **Settings → API Settings → Storage Mode**. **JSON export/import**
 moves data between the two modes.
+
+## Workspace
+
+- **Tree:** drag people, drag the empty canvas to pan, scroll to zoom, fit the tree,
+  and arrange people automatically. Manual positions can be adjusted afterward.
+- **People:** browse everyone, including unplaced and incomplete records.
+- **Timeline:** birth, death, and partnership events from the existing fields.
+- **Research:** counts of missing dates and places, plus records to complete.
+- **Inspector:** click a person for details, immediate relatives, editing, and
+  relationship lookup against another person.
+- **Settings:** storage mode, card attribute options, appearance, and interchange.
+- **Export:** JSON, GEDCOM, SVG, PNG, and PDF. JSON remains the lossless native
+  format; SVG exports vector cards and lines. GEDCOM supports names, sex,
+  birth/death, occupation, notes, spouses, parent/child links, marriages,
+  divorce, and their dates/places. Other GEDCOM tags are skipped.
+
+Local mode keeps a bounded in-session undo/redo history. Server mode disables
+undo because the current API has no revision checks; a historical snapshot
+could otherwise overwrite changes made directly in MariaDB or another browser.
+The arrange action writes new positions in either mode. Keep a JSON backup
+before bulk edits in server mode.
+
+Keyboard: **F** search, **A** add person, **E** edit selection, **0** fit tree,
+**Ctrl/Cmd+Z** undo and **Ctrl/Cmd+Shift+Z** redo in Local mode.
 
 ## Run locally
 
@@ -59,7 +85,7 @@ Open the app, choose **Local** storage mode, and it works with zero setup:
 
 ```bash
 cd public && python3 -m http.server 8080
-# open http://localhost:8080  → API Settings → Storage Mode: Local
+# open http://localhost:8080 → Settings → API Settings → Storage Mode: Local
 ```
 
 (Opening `public/index.html` directly also works in most browsers.)
@@ -69,7 +95,8 @@ cd public && python3 -m http.server 8080
 1. Create the DB and run `db/schema.sql` (phpMyAdmin → SQL, or
    `mysql -u user -p dbname < db/schema.sql`).
 2. Upload `public/index.html` and `public/api.php` to the same folder.
-3. Create `public/config.php` from `config.sample.php` and fill in the DB
+3. Upload `public/workspace.js`, `public/workspace.css`, and `public/gedcom.js`
+   alongside `index.html`; then create `public/config.php` from `config.sample.php` and fill in the DB
    credentials. **Do not commit it** (it is git-ignored).
 4. If you set `api_key`, enter the same key in the app's API Settings.
 
