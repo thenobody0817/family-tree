@@ -3,6 +3,14 @@
 A self-hosted family-tree / genealogy tool: draggable person cards, marriages,
 parent-child links, live sync, and PNG / PDF / JSON export.
 
+## Live demo
+
+Static demo (no backend — runs entirely in the browser):
+**https://thenobody0817.github.io/family-tree/**
+
+Open it, then click **Export / Import → 🌱 Load sample family** to populate it.
+
+
 - `public/index.html` — the whole frontend (vanilla JS, no build step)
 - `public/api.php` — small REST API (PHP 8 + PDO)
 - `db/schema.sql` — MariaDB 10.6+ schema + helper views
@@ -74,6 +82,15 @@ variables (`FT_DB_HOST`, `FT_DB_NAME`, `FT_DB_USER`, `FT_DB_PASS`,
 Because Local mode needs no server, you can publish the demo statically:
 put `index.html` on GitHub Pages, open it, and set Storage Mode to **Local**.
 No database, no PHP.
+
+This repo deploys Pages from the **`gh-pages` branch** (the `public/` folder),
+so no Actions workflow is required. To update the deployed demo:
+
+```bash
+git subtree split --prefix public -b gh-pages
+git push -f origin gh-pages
+git branch -D gh-pages
+```
 
 ## Editing from the database side
 
