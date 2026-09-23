@@ -1,0 +1,13 @@
+# Local secrets — never commit
+config.php
+/public/config.php
+.env
+*.local.php
+
+# Extracted Claude source dump (contains original secrets) — keep local only
+_source/
+
+# Data / logs
+dbdata/
+*.log
+.DS_Store

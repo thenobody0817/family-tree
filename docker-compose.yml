@@ -1,0 +1,42 @@
+services:
+  web:
+    build: ./docker
+    container_name: family-tree-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public:/var/www/html
+    environment:
+      FT_DB_HOST: db
+      FT_DB_PORT: "3306"
+      FT_DB_NAME: family_tree
+      FT_DB_USER: family_tree
+      FT_DB_PASS: family_tree
+      FT_API_KEY: ""
+      FT_ALLOW_ORIGIN: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:10.11
+    container_name: family-tree-db
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: family_tree
+      MARIADB_USER: family_tree
+      MARIADB_PASSWORD: family_tree
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # Demo data is loaded automatically on a fresh volume.
+      # Remove this line for an empty database.
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  dbdata:
