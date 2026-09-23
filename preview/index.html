@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Tree Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sb:#f8f3eb;--sbb:#e0d3bb;--ac:#4a3728;--ach:#6b4f3a;
+  --tx:#2d1f14;--mu:#7d6548;--ib:#cfc1a6;--canvas:#f5f0e8;
+}
+body{font-family:'Nunito',sans-serif;display:flex;height:100vh;overflow:hidden;background:#1e1e1e;color:var(--tx)}
+
+/* ── SIDEBAR ── */
+#sidebar{width:290px;min-width:290px;background:var(--sb);border-right:2px solid var(--sbb);display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(0,0,0,.3)}
+.sbh{padding:16px 16px 12px;background:var(--ac);color:#fdf8f0;flex-shrink:0}
+.sbh h1{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
+.sbh .sub{font-size:11px;opacity:.55;margin-top:2px}
+.conn-status{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600}
+.conn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#6b7280;transition:background .4s}
+.conn-dot.ok{background:#22c55e}.conn-dot.err{background:#ef4444}.conn-dot.wait{background:#f59e0b}
+.sb-scroll{flex:1;overflow-y:auto;padding:12px}
+.sb-scroll::-webkit-scrollbar{width:4px}.sb-scroll::-webkit-scrollbar-thumb{background:var(--sbb);border-radius:2px}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:6px 0;user-select:none}
+.sec-hdr .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--mu)}
+.sec-hdr .arr{font-size:10px;color:var(--mu);transition:transform .2s}
+.sec-hdr.open .arr{transform:rotate(90deg)}
+.sec-body{overflow:hidden;transition:max-height .25s ease}
+.sec-body.closed{max-height:0!important}
+.sb-dv{border:none;border-top:1px solid var(--sbb);margin:8px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.rlbl{font-size:12.5px;color:var(--tx);display:flex;align-items:center;gap:6px;flex:1}
+input[type=color]{width:34px;height:26px;border:1.5px solid var(--ib);border-radius:6px;cursor:pointer;padding:2px;background:#fff}
+input[type=number]{width:72px;padding:4px 8px;border:1.5px solid var(--ib);border-radius:6px;font-size:12px;font-family:'Nunito',sans-serif;color:var(--tx);background:#fff;outline:none}
+input[type=number]:focus{border-color:var(--ac)}
+.tog{position:relative;width:34px;height:18px;cursor:pointer;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-track{position:absolute;inset:0;background:#ccc;border-radius:9px;transition:background .2s}
+.tog input:checked+.tog-track{background:var(--ac)}
+.tog-thumb{position:absolute;left:2px;top:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tog input:checked~.tog-thumb{left:18px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.toggle-lbl{font-size:12.5px;color:var(--tx)}
+.btn-p{width:100%;padding:9px 12px;background:var(--ac);color:#fdf8f0;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s;margin-bottom:6px}
+.btn-p:hover{background:var(--ach)}
+.btn-o{width:100%;padding:8px 12px;background:transparent;color:var(--ac);border:2px solid var(--ac);border-radius:8px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;margin-bottom:6px}
+.btn-o:hover{background:var(--ac);color:#fdf8f0}
+.btn-sm{padding:5px 9px;font-size:12px;border:1.5px solid var(--ib);background:#fff;border-radius:6px;cursor:pointer;font-family:'Nunito',sans-serif;color:var(--tx);transition:all .13s}
+.btn-sm:hover{background:#f0ebe0}
+.exp-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.bexp{padding:8px;border:none;border-radius:7px;font-family:'Nunito',sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;color:#fff}
+.epng{background:#3a6b4a}.epng:hover{background:#4c8860}
+.epdf{background:#b5451b}.epdf:hover{background:#d45520}
+.ejson{background:#3f4a5a}.ejson:hover{background:#556a80}
+.eimp{background:#6b4f3a}.eimp:hover{background:#8a6a4f}
+.unassigned-item{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--ib);border-radius:7px;padding:6px 9px;margin-bottom:5px;font-size:12.5px}
+.unassigned-item .uname{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unassigned-item .ubirth{font-size:11px;color:var(--mu);flex-shrink:0}
+
+/* ── CANVAS ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#cwrap{flex:1;overflow:auto;position:relative}
+#cinner{position:relative;background:var(--canvas)}
+#lsvg{position:absolute;top:0;left:0;pointer-events:none;z-index:1}
+#lsvg .hit{pointer-events:stroke;cursor:pointer}
+#gen-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:0}
+
+/* ── PERSON CARDS ── */
+.pc{position:absolute;background:#fff;border-radius:10px;border-left:4px solid #94a3b8;min-width:168px;max-width:220px;cursor:grab;user-select:none;z-index:10;box-shadow:0 2px 12px rgba(0,0,0,.1),0 1px 3px rgba(0,0,0,.06);overflow:hidden;transition:box-shadow .15s}
+.pc:hover{box-shadow:0 6px 20px rgba(0,0,0,.17)}
+.pc.dragging{cursor:grabbing;box-shadow:0 14px 40px rgba(0,0,0,.26);z-index:50}
+.pc.hi-src{outline:3px solid #f59e0b}
+.pc.hi-tgt{outline:3px solid #22c55e;cursor:crosshair!important}
+.pc-top{padding:10px 12px 0}
+.pc-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:#1a1a1a;line-height:1.25;word-break:break-word}
+.pc-maiden{font-family:'Cormorant Garamond',serif;font-size:13px;font-style:italic;color:#888;margin-top:1px}
+.pc-attrs{padding:4px 12px 6px;display:flex;flex-direction:column;gap:2px}
+.pc-attr{font-size:11.5px;color:#555;line-height:1.4;display:flex;gap:5px;align-items:flex-start}
+.pc-attr .ai{flex-shrink:0;font-size:11px;opacity:.7}
+.pc-attr .av{flex:1;word-break:break-word}
+.pc-attr b{color:#333}
+.pc-acts{display:flex;gap:2px;padding:7px 8px;border-top:1px solid #f0ebe0;flex-wrap:wrap}
+.pcb{padding:3px 5px;font-size:12px;border:1px solid #e0d8cc;background:#fafaf8;border-radius:5px;cursor:pointer;color:#666;line-height:1;transition:all .12s}
+.pcb:hover{background:#f0ebe0;border-color:#ccc;color:#333}
+.pcb-wed{border-color:#bfdbfe;color:#1d4ed8}.pcb-wed:hover{background:#eff6ff}
+.pcb-unw{border-color:#e9d5ff;color:#7c3aed}.pcb-unw:hover{background:#f5f3ff}
+.pcb-par{border-color:#bbf7d0;color:#15803d}.pcb-par:hover{background:#f0fdf4}
+.pcb-del{border-color:#fecaca;color:#dc2626}.pcb-del:hover{background:#fef2f2}
+
+/* ── MODALS ── */
+.mov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.mov.on{display:flex}
+.mdl{background:var(--sb);border-radius:16px;width:520px;max-width:96vw;box-shadow:0 28px 80px rgba(0,0,0,.4);animation:mIn .2s ease;max-height:92vh;display:flex;flex-direction:column}
+@keyframes mIn{from{opacity:0;transform:translateY(-14px) scale(.97)}to{opacity:1;transform:none}}
+.mdl-hdr{padding:22px 24px 0;flex-shrink:0}
+.mdl-hdr h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--tx)}
+.mdl-hdr p{font-size:12px;color:var(--mu);margin-top:3px}
+.mdl-body{padding:16px 24px;overflow-y:auto;flex:1}
+.mdl-body::-webkit-scrollbar{width:4px}.mdl-body::-webkit-scrollbar-thumb{background:var(--sbb);border-radius:2px}
+.mdl-foot{padding:14px 24px;border-top:1px solid var(--sbb);display:flex;gap:8px;flex-shrink:0}
+.tab-nav{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--sbb);padding-bottom:0}
+.tab-btn{padding:7px 14px;font-size:12.5px;font-weight:700;font-family:'Nunito',sans-serif;border:none;background:none;cursor:pointer;color:var(--mu);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab-btn.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.mf{margin-bottom:12px}
+.mf>label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mu);margin-bottom:4px}
+.mf input,.mf select,.mf textarea{width:100%;padding:8px 12px;border:1.5px solid var(--ib);border-radius:9px;font-size:14px;font-family:'Nunito',sans-serif;background:#fff;color:var(--tx);outline:none;transition:border-color .15s}
+.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:var(--ac)}
+.mf textarea{resize:vertical;min-height:70px;line-height:1.5}
+.mf-hint{font-size:11px;color:var(--mu);margin-top:3px}
+.mf-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.color-row{display:flex;gap:8px;align-items:center}
+.color-row input[type=color]{flex-shrink:0}
+.color-row input[type=text]{flex:1;padding:8px 12px;border:1.5px solid var(--ib);border-radius:9px;font-size:14px;font-family:'Nunito',sans-serif;background:#fff;color:var(--tx);outline:none}
+.color-row input[type=text]:focus{border-color:var(--ac)}
+.btn-save{flex:1;padding:9px;background:var(--ac);color:#fdf8f0;border:none;border-radius:9px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background .18s}
+.btn-save:hover{background:var(--ach)}
+.btn-cnl{padding:9px 16px;background:#fff;color:var(--tx);border:1.5px solid var(--ib);border-radius:9px;font-family:'Nunito',sans-serif;font-size:14px;cursor:pointer;transition:background .15s}
+.btn-cnl:hover{background:#f0ebe0}
+.btn-dng{padding:9px 14px;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;border-radius:9px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.btn-dng:hover{background:#fee2e2}
+.cinfo{font-size:13px;color:var(--ac);font-weight:700;margin-bottom:12px;padding:8px 12px;background:#f0ebe0;border-radius:8px}
+.child-row{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:#fff;border:1px solid var(--ib);border-radius:7px;margin-bottom:4px;font-size:13px}
+.child-rm{background:none;border:none;color:#dc2626;font-size:15px;cursor:pointer;padding:0 2px}
+.btn-add-child{width:100%;padding:7px;background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;border-radius:7px;font-family:'Nunito',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:6px}
+.btn-add-child:hover{background:#dcfce7}
+/* Setup */
+.setup-box{background:#f0ebe0;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;color:var(--mu);line-height:2}
+.setup-box b{color:var(--tx)}
+
+/* ── BANNER & TOAST ── */
+#banner{display:none;position:fixed;top:18px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:24px;font-size:13px;font-weight:700;z-index:600;align-items:center;gap:14px;white-space:nowrap;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+#banner.on{display:flex}
+.bn-wed{background:#1d4ed8;color:#fff}.bn-unw{background:#6d28d9;color:#fff}
+.bn-par{background:#15803d;color:#fff}.bn-child{background:#b45309;color:#fff}
+#bcx{background:rgba(255,255,255,.22);border:none;color:#fff;padding:3px 13px;border-radius:14px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700}
+#bcx:hover{background:rgba(255,255,255,.38)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,.9);color:#f5f5f5;padding:9px 24px;border-radius:24px;font-size:13px;font-weight:600;pointer-events:none;opacity:0;transition:opacity .3s;z-index:800}
+#toast.on{opacity:1}
+</style>
+<link href="./workspace.css" rel="stylesheet">
+</head>
+<body>
+<nav id="rail" aria-label="Main navigation">
+  <div class="rail-mark" title="Family Tree">✦</div>
+  <button class="rail-btn active" data-view="tree" title="Tree" aria-label="Tree">♧<span>Tree</span></button>
+  <button class="rail-btn" data-view="people" title="People" aria-label="People">☷<span>People</span></button>
+  <button class="rail-btn" data-view="timeline" title="Timeline" aria-label="Timeline">◷<span>Timeline</span></button>
+  <button class="rail-btn" data-view="research" title="Research" aria-label="Research">◇<span>Research</span></button>
+  <button class="rail-btn rail-settings" data-view="settings" title="Settings" aria-label="Settings">⚙<span>Settings</span></button>
+</nav>
+
+<!-- ══ SIDEBAR ══ -->
+<div id="sidebar">
+  <div class="sbh">
+    <h1>Workspace settings</h1>
+    <div class="sub">MariaDB · PHP · Live sync</div>
+    <div class="conn-status">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-lbl">Connecting…</span>
+    </div>
+  </div>
+  <div class="sb-scroll">
+
+    <div style="padding:4px 0 4px">
+      <button class="btn-p" onclick="openAddPerson()">＋ Add Person</button>
+      <button class="btn-o" onclick="showModal('setup-ov')">⚙ API Settings</button>
+    </div>
+
+    <hr class="sb-dv">
+
+    <div class="mf"><label for="theme-choice">Appearance</label><select id="theme-choice" onchange="setTheme(this.value)"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+
+    <hr class="sb-dv">
+
+    <!-- Attribute Toggles -->
+    <div class="sec-hdr open" onclick="toggleSec(this)"><span class="lbl">Card Attributes</span><span class="arr">▶</span></div>
+    <div class="sec-body" style="max-height:500px"><div id="attr-toggles"></div></div>
+
+    <hr class="sb-dv">
+
+    <!-- Visual Settings -->
+    <div class="sec-hdr open" onclick="toggleSec(this)"><span class="lbl">Visual Settings</span><span class="arr">▶</span></div>
+    <div class="sec-body" style="max-height:400px">
+      <div class="toggle-row">
+        <span class="toggle-lbl">Generation grid</span>
+        <label class="tog"><input type="checkbox" id="grid-tog" onchange="applyGrid()"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+      </div>
+      <div id="grid-opts" style="display:none;padding-top:4px">
+        <div class="row"><span class="rlbl">Row height (px)</span>
+          <input type="number" id="grid-h" value="220" min="80" max="600" step="20" onchange="applyGrid()">
+        </div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span class="rlbl">Child line color</span>
+        <input type="color" id="child-col" value="#16a34a" oninput="applyChildColor()">
+      </div>
+      <div class="row">
+        <span class="rlbl">Canvas background</span>
+        <input type="color" id="canvas-bg" value="#f5f0e8" oninput="applyCanvasBg()">
+      </div>
+      <div class="row advanced-size">
+        <span class="rlbl">Canvas width (px)</span>
+        <input type="number" id="cw" value="3000" min="1000" max="10000" step="200" onchange="applyCanvasSize()">
+      </div>
+      <div class="row advanced-size">
+        <span class="rlbl">Canvas height (px)</span>
+        <input type="number" id="ch" value="2200" min="800" max="10000" step="200" onchange="applyCanvasSize()">
+      </div>
+    </div>
+
+    <hr class="sb-dv">
+
+    <!-- Unassigned -->
+    <div class="sec-hdr open" onclick="toggleSec(this)">
+      <span class="lbl">Unassigned <span id="unassigned-count" style="font-size:10px;background:var(--ac);color:#fff;padding:1px 6px;border-radius:8px;margin-left:4px">0</span></span>
+      <span class="arr">▶</span>
+    </div>
+    <div class="sec-body" style="max-height:280px"><div id="unassigned-list"></div></div>
+
+    <hr class="sb-dv">
+
+    <!-- Export / Import -->
+    <div class="sec-hdr" onclick="toggleSec(this)"><span class="lbl">Export / Import</span><span class="arr">▶</span></div>
+    <div class="sec-body closed" style="max-height:200px">
+      <div class="exp-row" style="padding-top:6px">
+        <button class="bexp epng" onclick="exportPNG()">🖼 PNG</button>
+        <button class="bexp epdf" onclick="exportPDF()">📄 PDF</button>
+      </div>
+      <div class="exp-row">
+        <button class="bexp ejson" onclick="exportJSON()">💾 JSON</button>
+        <button class="bexp eimp" onclick="triggerImport()">📂 Import</button>
+      </div>
+      <div class="mf-hint" style="padding:2px 2px 8px">JSON is the interchange format: export from the server and import into the local app (or vice-versa).</div>
+      <button class="bexp eimp" id="btn-sample" style="display:none;width:100%;margin-bottom:8px" onclick="loadSample()">🌱 Load sample family</button>
+      <input type="file" id="import-file" accept="application/json,.json,.ged,.gedcom,text/plain" style="display:none" onchange="onImportFile(event)">
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ CANVAS ══ -->
+<div id="main">
+  <header id="toolbar">
+    <div class="brand"><strong>Family Tree Preview</strong><span>Research workspace</span></div>
+    <div class="search-box"><span aria-hidden="true">⌕</span><input id="person-search" type="search" placeholder="Find a person…" aria-label="Find a person" autocomplete="off"><div id="search-results" role="listbox"></div></div>
+    <div class="toolbar-actions"><button id="undo-btn" class="tool-btn" title="Undo" aria-label="Undo" onclick="historyStep(-1)">↶</button><button id="redo-btn" class="tool-btn" title="Redo" aria-label="Redo" onclick="historyStep(1)">↷</button><span id="toolbar-status">Connecting…</span><button class="primary-action" onclick="openAddPerson()">＋ Add person</button></div>
+  </header>
+  <div id="cwrap">
+    <div id="empty-state" hidden><div class="empty-icon">✦</div><h2>Every family has a story.</h2><p>Add the first person, or explore the workspace with a sample family.</p><div><button class="primary-action" onclick="openAddPerson()">Add first person</button><button id="empty-sample" class="tool-btn" onclick="loadSample()">Explore sample</button></div></div>
+    <div id="stage"><div id="cinner">
+      <svg id="gen-svg"></svg><svg id="lsvg"></svg>
+    </div></div>
+    <div id="canvas-hint">Drag the canvas to move · Select a person to inspect</div>
+    <div id="zoom-controls"><button onclick="setZoom(view.zoom/1.2)" aria-label="Zoom out">−</button><span id="zoom-readout">100%</span><button onclick="setZoom(view.zoom*1.2)" aria-label="Zoom in">＋</button><button onclick="fitTree()">Fit tree</button><button onclick="arrangeTree()" title="Save automatic positions">Arrange</button></div>
+  </div>
+  <section id="content-panel" hidden><div class="content-head"><div><span class="eyebrow" id="view-eyebrow">DIRECTORY</span><h2 id="view-title">People</h2></div><button class="tool-btn" onclick="showView('tree')" aria-label="Close panel">×</button></div><div id="content-body"></div></section>
+</div>
+<aside id="inspector" hidden aria-label="Person details"></aside>
+</div>
+
+<!-- ══ BANNER & TOAST ══ -->
+<div id="banner"><span id="btxt"></span><button id="bcx" onclick="cancelConnect()">Cancel (Esc)</button></div>
+<div id="toast"></div>
+
+<!-- ══ SETUP MODAL ══ -->
+<div id="setup-ov" class="mov" onclick="ovClose(event,'setup-ov')">
+  <div class="mdl" style="width:460px">
+    <div class="mdl-hdr"><h2>API Settings</h2><p>Configure connection to your PHP backend</p></div>
+    <div class="mdl-body">
+      <div class="setup-box">
+        <b>Setup checklist:</b><br>
+        1. Run <b>family-tree-schema.sql</b> in phpMyAdmin → SQL<br>
+        2. Edit <b>api.php</b> — set DB_HOST, DB_NAME, DB_USER, DB_PASS<br>
+        3. Upload both files to the same folder as this HTML<br>
+        4. If you set <b>API_KEY</b> in api.php, enter it below
+      </div>
+      <div class="mf"><label>Storage Mode</label>
+        <select id="cfg-mode" onchange="onModeChange()">
+          <option value="server">Server — api.php + MariaDB (shared, synced)</option>
+          <option value="local">Local — this browser only (no server)</option>
+        </select>
+        <div class="mf-hint">Local mode runs fully offline. Use Export/Import → JSON to move data between modes.</div>
+      </div>
+      <div id="server-fields">
+      <div class="mf"><label>API URL</label>
+        <input type="text" id="cfg-url" value="./api.php" placeholder="./api.php or https://…/api.php">
+        <div class="mf-hint">Path to api.php — usually <b>./api.php</b> if in same folder</div>
+      </div>
+      <div class="mf"><label>API Key <span style="font-weight:400;text-transform:none;font-size:11px">(leave empty if not set in api.php)</span></label>
+        <input type="password" id="cfg-key" placeholder="optional">
+      </div>
+      </div>
+      <div class="mf"><label>Poll interval (seconds)</label>
+        <input type="number" id="cfg-poll" value="6" min="3" max="60">
+        <div class="mf-hint">How often to check for changes made directly in the database</div>
+      </div>
+    </div>
+    <div class="mdl-foot">
+      <button class="btn-cnl" onclick="closeModal('setup-ov')">Cancel</button>
+      <button class="btn-save" onclick="saveConfig()">Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PERSON MODAL ══ -->
+<div id="pmov" class="mov" onclick="ovClose(event,'pmov')">
+  <div class="mdl">
+    <div class="mdl-hdr">
+      <h2 id="pm-title">Add Person</h2>
+      <p>All fields optional · Dates: <b>1985</b> · <b>06/1985</b> · <b>15/06/1985</b></p>
+    </div>
+    <div class="mdl-body">
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="openTab(this,'t-identity')">Identity</button>
+        <button class="tab-btn" onclick="openTab(this,'t-life')">Life Events</button>
+        <button class="tab-btn" onclick="openTab(this,'t-details')">Details</button>
+        <button class="tab-btn" onclick="openTab(this,'t-notes')">Notes</button>
+      </div>
+      <div class="tab-pane active" id="t-identity">
+        <div class="mf-2col">
+          <div class="mf"><label>First Name</label><input type="text" id="p-first" autocomplete="off"></div>
+          <div class="mf"><label>Last Name</label><input type="text" id="p-last" autocomplete="off"></div>
+        </div>
+        <div class="mf"><label>Maiden Name</label><input type="text" id="p-maiden" autocomplete="off"></div>
+        <div class="mf"><label>Gender</label>
+          <select id="p-gender"><option value="">— not specified —</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+        </div>
+      </div>
+      <div class="tab-pane" id="t-life">
+        <div class="mf-2col">
+          <div class="mf"><label>Date of Birth</label><input type="text" id="p-bdate" placeholder="YYYY or DD/MM/YYYY" autocomplete="off"></div>
+          <div class="mf"><label>Place of Birth</label><input type="text" id="p-bplace" autocomplete="off"></div>
+        </div>
+        <div class="mf-2col">
+          <div class="mf"><label>Date of Death</label><input type="text" id="p-ddate" placeholder="YYYY or DD/MM/YYYY" autocomplete="off"></div>
+          <div class="mf"><label>Place of Death</label><input type="text" id="p-dplace" autocomplete="off"></div>
+        </div>
+      </div>
+      <div class="tab-pane" id="t-details">
+        <div class="mf"><label>Occupation</label><input type="text" id="p-occ" autocomplete="off"></div>
+        <div class="mf"><label>Education</label><input type="text" id="p-edu" autocomplete="off"></div>
+        <div class="mf-2col">
+          <div class="mf"><label>Eye Color</label><input type="text" id="p-eye" autocomplete="off"></div>
+          <div class="mf"><label>Hair Color</label><input type="text" id="p-hair" autocomplete="off"></div>
+        </div>
+      </div>
+      <div class="tab-pane" id="t-notes">
+        <div class="mf"><label>Research Notes</label><textarea id="p-notes" placeholder="Sources, references, uncertainties…"></textarea></div>
+      </div>
+    </div>
+    <div class="mdl-foot">
+      <button class="btn-dng" id="pm-del" style="display:none" onclick="deletePersonModal()">🗑 Delete</button>
+      <button class="btn-cnl" onclick="closeModal('pmov')">Cancel</button>
+      <button class="btn-save" onclick="savePerson()">Save Person</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ COUPLE MODAL ══ -->
+<div id="cmov" class="mov" onclick="ovClose(event,'cmov')">
+  <div class="mdl" style="width:480px">
+    <div class="mdl-hdr"><h2 id="cm-title">Marriage</h2></div>
+    <div class="mdl-body">
+      <div class="cinfo" id="cm-info"></div>
+      <div class="mf"><label>Relationship Type</label>
+        <select id="cm-type" onchange="onCoupleTypeChange()">
+          <option value="married">💍 Married</option>
+          <option value="unmarried">🤝 Unmarried Partners</option>
+        </select>
+      </div>
+      <div class="mf-2col">
+        <div class="mf"><label id="cm-sl">Marriage Date</label><input type="text" id="cm-start" placeholder="YYYY or DD/MM/YYYY" autocomplete="off"></div>
+        <div class="mf"><label id="cm-pl">Marriage Place</label><input type="text" id="cm-place" autocomplete="off"></div>
+      </div>
+      <div class="mf"><label>Status</label>
+        <select id="cm-status" onchange="onCoupleStatusChange()">
+          <option value="active">Active</option>
+          <option value="divorced">💔 Divorced</option>
+          <option value="widowed">🖤 Widowed</option>
+        </select>
+      </div>
+      <div id="cm-end-wrap" style="display:none">
+        <div class="mf-2col">
+          <div class="mf"><label id="cm-el">End Date</label><input type="text" id="cm-end" placeholder="YYYY or DD/MM/YYYY" autocomplete="off"></div>
+          <div class="mf"><label>End Place</label><input type="text" id="cm-endpl" autocomplete="off"></div>
+        </div>
+      </div>
+      <div class="mf"><label>Line Color</label>
+        <div class="color-row">
+          <input type="color" id="cm-color" value="#2563eb" oninput="document.getElementById('cm-hex').value=this.value">
+          <input type="text"  id="cm-hex"   value="#2563eb" placeholder="#2563eb" maxlength="7"
+                 oninput="let v=this.value.trim();if(!v.startsWith('#'))v='#'+v;if(/^#[0-9a-fA-F]{6}$/.test(v))document.getElementById('cm-color').value=v">
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px dashed var(--ib);margin:12px 0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--mu);margin-bottom:6px">Children of this couple</div>
+      <div id="cm-children"></div>
+      <button class="btn-add-child" onclick="startAddChild()">👶 Add child from canvas</button>
+    </div>
+    <div class="mdl-foot">
+      <button class="btn-dng" onclick="deleteCouple()">🗑 Delete</button>
+      <button class="btn-cnl" onclick="closeModal('cmov')">Cancel</button>
+      <button class="btn-save" onclick="saveCouple()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════
+if (!localStorage.getItem("ft_preview_local_data")) localStorage.setItem("ft_preview_local_data", JSON.stringify({"format": "family-tree", "version": 1, "exported_at": "2026-09-24T00:00:00.000Z", "persons": [{"id": "00000000-0000-4000-8000-000000000001", "first_name": "J\u0101nis", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1898", "birth_place": "R\u012bga", "death_date": "1975", "death_place": "R\u012bga", "occupation": "Saimnieks", "education": "R\u012bgas \u0123imn\u0101zija", "eye_color": null, "hair_color": null, "notes": "Dzimis P\u0101rdaugav\u0101.", "canvas_x": 100, "canvas_y": 80}, {"id": "00000000-0000-4000-8000-000000000002", "first_name": "Anna", "last_name": "B\u0113rzi\u0146a", "maiden_name": "Ozola", "gender": "female", "birth_date": "03/1901", "birth_place": "R\u012bga", "death_date": "1980", "death_place": "R\u012bga", "occupation": "M\u0101jtur\u012bba", "education": null, "eye_color": "zilas", "hair_color": "gai\u0161i", "notes": null, "canvas_x": 360, "canvas_y": 80}, {"id": "00000000-0000-4000-8000-000000000003", "first_name": "P\u0113teris", "last_name": "Kalni\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "15/06/1895", "birth_place": "C\u0113sis", "death_date": "1968", "death_place": "C\u0113sis", "occupation": "Me\u017ezinis", "education": null, "eye_color": null, "hair_color": null, "notes": "Kalna mui\u017eas me\u017ezinis.", "canvas_x": 760, "canvas_y": 80}, {"id": "00000000-0000-4000-8000-000000000004", "first_name": "Marija", "last_name": "Kalni\u0146a", "maiden_name": "Liepa", "gender": "female", "birth_date": "1899", "birth_place": "C\u0113sis", "death_date": "1972", "death_place": "C\u0113sis", "occupation": "Skolot\u0101ja", "education": "C\u0113su skolot\u0101ju semin\u0101rs", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 1020, "canvas_y": 80}, {"id": "00000000-0000-4000-8000-000000000005", "first_name": "K\u0101rlis", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1925", "birth_place": "R\u012bga", "death_date": "05/2005", "death_place": "R\u012bga", "occupation": "In\u017eenieris", "education": "RTU", "eye_color": "pel\u0113kas", "hair_color": "tum\u0161i", "notes": "B\u016bv\u0113ja tiltus.", "canvas_x": 100, "canvas_y": 360}, {"id": "00000000-0000-4000-8000-000000000006", "first_name": "Elza", "last_name": "B\u0113rzi\u0146a", "maiden_name": "Kalni\u0146a", "gender": "female", "birth_date": "1928", "birth_place": "C\u0113sis", "death_date": "2010", "death_place": "R\u012bga", "occupation": "Skolot\u0101ja", "education": "LVU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 360, "canvas_y": 360}, {"id": "00000000-0000-4000-8000-000000000007", "first_name": "Roberts", "last_name": "Ozols", "maiden_name": null, "gender": "male", "birth_date": "1930", "birth_place": "Liep\u0101ja", "death_date": "1998", "death_place": "Liep\u0101ja", "occupation": "Zvejnieks", "education": null, "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 760, "canvas_y": 360}, {"id": "00000000-0000-4000-8000-000000000008", "first_name": "Ilga", "last_name": "Ozola", "maiden_name": "Krasti\u0146a", "gender": "female", "birth_date": "1933", "birth_place": "Liep\u0101ja", "death_date": null, "death_place": null, "occupation": "\u0160uv\u0113ja", "education": null, "eye_color": "za\u013cas", "hair_color": "balti", "notes": null, "canvas_x": 1020, "canvas_y": 360}, {"id": "00000000-0000-4000-8000-000000000009", "first_name": "J\u0101nis", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1952", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "Programm\u0113t\u0101js", "education": "LVU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 100, "canvas_y": 640}, {"id": "00000000-0000-4000-8000-000000000010", "first_name": "L\u012bga", "last_name": "B\u0113rzi\u0146a", "maiden_name": "Ozola", "gender": "female", "birth_date": "1955", "birth_place": "Liep\u0101ja", "death_date": null, "death_place": null, "occupation": "\u0100rste", "education": "R\u012bgas Stradi\u0146a universit\u0101te", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 360, "canvas_y": 640}, {"id": "00000000-0000-4000-8000-000000000011", "first_name": "Andris", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1956", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "B\u016bvin\u017eenieris", "education": "RTU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 620, "canvas_y": 640}, {"id": "00000000-0000-4000-8000-000000000012", "first_name": "Daina", "last_name": "B\u0113rzi\u0146a", "maiden_name": "Ozola", "gender": "female", "birth_date": "1960", "birth_place": "Liep\u0101ja", "death_date": "2018", "death_place": "R\u012bga", "occupation": "Gr\u0101matvede", "education": null, "eye_color": null, "hair_color": null, "notes": "Mirusi 2018. gad\u0101.", "canvas_x": 880, "canvas_y": 640}, {"id": "00000000-0000-4000-8000-000000000013", "first_name": "M\u0101ra", "last_name": "Zari\u0146a", "maiden_name": null, "gender": "female", "birth_date": "1958", "birth_place": "Valmiera", "death_date": null, "death_place": null, "occupation": "M\u016bzi\u0137e", "education": "JVLMA", "eye_color": null, "hair_color": null, "notes": "B\u0113rnu audzin\u0101jusi viena.", "canvas_x": 1140, "canvas_y": 640}, {"id": "00000000-0000-4000-8000-000000000014", "first_name": "Kristaps", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1978", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "Arhitekts", "education": "RTU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 100, "canvas_y": 920}, {"id": "00000000-0000-4000-8000-000000000015", "first_name": "Ieva", "last_name": "B\u0113rzi\u0146a", "maiden_name": null, "gender": "female", "birth_date": "1981", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "\u017durn\u0101liste", "education": "LU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 360, "canvas_y": 920}, {"id": "00000000-0000-4000-8000-000000000016", "first_name": "Laila", "last_name": "Zari\u0146a", "maiden_name": null, "gender": "female", "birth_date": "1985", "birth_place": "Valmiera", "death_date": null, "death_place": null, "occupation": "Biolo\u0123e", "education": "LU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 620, "canvas_y": 920}, {"id": "00000000-0000-4000-8000-000000000017", "first_name": "Rihards", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1983", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "Ska\u0146u re\u017eisors", "education": null, "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 880, "canvas_y": 920}, {"id": "00000000-0000-4000-8000-000000000018", "first_name": "Anete", "last_name": "B\u0113rzi\u0146a", "maiden_name": null, "gender": "female", "birth_date": "1987", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "Vides speci\u0101liste", "education": "LLU", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 1140, "canvas_y": 920}, {"id": "00000000-0000-4000-8000-000000000019", "first_name": "Em\u012bls", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1990", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "Ekonomists", "education": "SSE R\u012bga", "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 1400, "canvas_y": 920}, {"id": "00000000-0000-4000-8000-000000000020", "first_name": "Alise", "last_name": "B\u0113rzi\u0146a", "maiden_name": "V\u012btola", "gender": "female", "birth_date": "1980", "birth_place": "J\u016brmala", "death_date": null, "death_place": null, "occupation": "Dizainere", "education": null, "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 100, "canvas_y": 1200}, {"id": "00000000-0000-4000-8000-000000000021", "first_name": "Marta", "last_name": "B\u0113rzi\u0146a", "maiden_name": null, "gender": "female", "birth_date": "2010", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": "Skolniece", "education": null, "eye_color": null, "hair_color": null, "notes": null, "canvas_x": 360, "canvas_y": 1200}, {"id": "00000000-0000-4000-8000-000000000022", "first_name": "Voldem\u0101rs", "last_name": "B\u0113rzi\u0146\u0161", "maiden_name": null, "gender": "male", "birth_date": "1935", "birth_place": "R\u012bga", "death_date": null, "death_place": null, "occupation": null, "education": null, "eye_color": null, "hair_color": null, "notes": "Iesp\u0113jams, K\u0101r\u013ca br\u0101l\u0113ns \u2014 j\u0101p\u0101rbauda.", "canvas_x": null, "canvas_y": null}], "couples": [{"id": "00000000-0000-4000-8000-000000000101", "person1_id": "00000000-0000-4000-8000-000000000001", "person2_id": "00000000-0000-4000-8000-000000000002", "rel_type": "married", "start_date": "1922", "start_place": "R\u012bga", "status": "active", "end_date": null, "end_place": null, "line_color": "#2563eb"}, {"id": "00000000-0000-4000-8000-000000000102", "person1_id": "00000000-0000-4000-8000-000000000003", "person2_id": "00000000-0000-4000-8000-000000000004", "rel_type": "married", "start_date": "1920", "start_place": "C\u0113sis", "status": "active", "end_date": null, "end_place": null, "line_color": "#1d4ed8"}, {"id": "00000000-0000-4000-8000-000000000103", "person1_id": "00000000-0000-4000-8000-000000000005", "person2_id": "00000000-0000-4000-8000-000000000006", "rel_type": "married", "start_date": "1950", "start_place": "R\u012bga", "status": "active", "end_date": null, "end_place": null, "line_color": "#3b82f6"}, {"id": "00000000-0000-4000-8000-000000000104", "person1_id": "00000000-0000-4000-8000-000000000007", "person2_id": "00000000-0000-4000-8000-000000000008", "rel_type": "married", "start_date": "1952", "start_place": "Liep\u0101ja", "status": "active", "end_date": null, "end_place": null, "line_color": "#1e40af"}, {"id": "00000000-0000-4000-8000-000000000105", "person1_id": "00000000-0000-4000-8000-000000000009", "person2_id": "00000000-0000-4000-8000-000000000010", "rel_type": "married", "start_date": "1976", "start_place": "R\u012bga", "status": "divorced", "end_date": "1990", "end_place": "R\u012bga", "line_color": "#60a5fa"}, {"id": "00000000-0000-4000-8000-000000000106", "person1_id": "00000000-0000-4000-8000-000000000011", "person2_id": "00000000-0000-4000-8000-000000000012", "rel_type": "married", "start_date": "1980", "start_place": "R\u012bga", "status": "widowed", "end_date": "2018", "end_place": "R\u012bga", "line_color": "#1e3a8a"}, {"id": "00000000-0000-4000-8000-000000000107", "person1_id": "00000000-0000-4000-8000-000000000014", "person2_id": "00000000-0000-4000-8000-000000000020", "rel_type": "married", "start_date": "2005", "start_place": "R\u012bga", "status": "active", "end_date": null, "end_place": null, "line_color": "#93c5fd"}], "parent_child": [{"id": "00000000-0000-4000-8000-000000000201", "parent_id": "00000000-0000-4000-8000-000000000001", "child_id": "00000000-0000-4000-8000-000000000005", "couple_id": "00000000-0000-4000-8000-000000000101"}, {"id": "00000000-0000-4000-8000-000000000202", "parent_id": "00000000-0000-4000-8000-000000000003", "child_id": "00000000-0000-4000-8000-000000000006", "couple_id": "00000000-0000-4000-8000-000000000102"}, {"id": "00000000-0000-4000-8000-000000000203", "parent_id": "00000000-0000-4000-8000-000000000005", "child_id": "00000000-0000-4000-8000-000000000009", "couple_id": "00000000-0000-4000-8000-000000000103"}, {"id": "00000000-0000-4000-8000-000000000204", "parent_id": "00000000-0000-4000-8000-000000000005", "child_id": "00000000-0000-4000-8000-000000000011", "couple_id": "00000000-0000-4000-8000-000000000103"}, {"id": "00000000-0000-4000-8000-000000000205", "parent_id": "00000000-0000-4000-8000-000000000007", "child_id": "00000000-0000-4000-8000-000000000010", "couple_id": "00000000-0000-4000-8000-000000000104"}, {"id": "00000000-0000-4000-8000-000000000206", "parent_id": "00000000-0000-4000-8000-000000000007", "child_id": "00000000-0000-4000-8000-000000000012", "couple_id": "00000000-0000-4000-8000-000000000104"}, {"id": "00000000-0000-4000-8000-000000000207", "parent_id": "00000000-0000-4000-8000-000000000009", "child_id": "00000000-0000-4000-8000-000000000014", "couple_id": "00000000-0000-4000-8000-000000000105"}, {"id": "00000000-0000-4000-8000-000000000208", "parent_id": "00000000-0000-4000-8000-000000000009", "child_id": "00000000-0000-4000-8000-000000000015", "couple_id": "00000000-0000-4000-8000-000000000105"}, {"id": "00000000-0000-4000-8000-000000000209", "parent_id": "00000000-0000-4000-8000-000000000011", "child_id": "00000000-0000-4000-8000-000000000017", "couple_id": "00000000-0000-4000-8000-000000000106"}, {"id": "00000000-0000-4000-8000-000000000210", "parent_id": "00000000-0000-4000-8000-000000000011", "child_id": "00000000-0000-4000-8000-000000000018", "couple_id": "00000000-0000-4000-8000-000000000106"}, {"id": "00000000-0000-4000-8000-000000000211", "parent_id": "00000000-0000-4000-8000-000000000011", "child_id": "00000000-0000-4000-8000-000000000019", "couple_id": "00000000-0000-4000-8000-000000000106"}, {"id": "00000000-0000-4000-8000-000000000212", "parent_id": "00000000-0000-4000-8000-000000000014", "child_id": "00000000-0000-4000-8000-000000000021", "couple_id": "00000000-0000-4000-8000-000000000107"}, {"id": "00000000-0000-4000-8000-000000000213", "parent_id": "00000000-0000-4000-8000-000000000013", "child_id": "00000000-0000-4000-8000-000000000016", "couple_id": null}]}));
+const CONF_KEY = 'ft_preview_cfg';
+const ATTR_KEY = 'ft_preview_attrs';
+
+// On a static host (GitHub Pages) or when opened as a file there is no PHP
+// backend, so default to Local (browser) storage.
+const IS_STATIC_HOST = /\.github\.io$/i.test(location.hostname) || location.protocol === 'file:';
+let CFG = { mode: IS_STATIC_HOST ? 'local' : 'server', url:'./api.php', key:'', poll:6 };
+
+const MARRIAGE_BLUES = ['#2563eb','#1d4ed8','#3b82f6','#1e40af','#60a5fa','#1e3a8a','#93c5fd'];
+
+const ATTR_DEFS = [
+  {key:'maiden_name', label:'Maiden Name',   def:true },
+  {key:'birth_date',  label:'Birth Date',    def:true },
+  {key:'death_date',  label:'Death Date',    def:true },
+  {key:'birth_place', label:'Place of Birth',def:false},
+  {key:'death_place', label:'Place of Death',def:false},
+  {key:'occupation',  label:'Occupation',    def:true },
+  {key:'education',   label:'Education',     def:false},
+  {key:'eye_color',   label:'Eye Color',     def:false},
+  {key:'hair_color',  label:'Hair Color',    def:false},
+  {key:'gender',      label:'Gender',        def:false},
+  {key:'notes',       label:'Notes',         def:false},
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const D = {
+  persons:     new Map(),
+  couples:     new Map(),
+  parentChild: new Map(),
+};
+
+let attrs = {};
+const UI = {
+  connectMode:null, connectFrom:null,
+  editPersonId:null, editCoupleId:null,
+  dragging:null,
+  grid:false, gridH:220,
+  childColor:'#16a34a',
+  canvasW:3000, canvasH:2200,
+  pollTimer:null,
+  posDebounce:{},
+};
+
+// ═══════════════════════════════════════════════════════
+//  API HELPERS
+// ═══════════════════════════════════════════════════════
+async function api(resource, method='GET', body=null, id='') {
+  if (CFG.mode === 'local') return localApi(resource, method, body, id);
+  const url = CFG.url + '?r=' + resource + (id?'&id='+encodeURIComponent(id):'');
+  const opts = { method, headers:{'Content-Type':'application/json'} };
+  if (CFG.key) opts.headers['X-Api-Key'] = CFG.key;
+  if (body) opts.body = JSON.stringify(body);
+  let res;
+  try { res = await fetch(url, opts); }
+  catch { throw new Error('Cannot reach ' + CFG.url); }
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); }
+  catch { throw new Error('Server did not return JSON (HTTP ' + res.status + ')'); }
+  if (!res.ok) throw new Error(data.error || 'API error ' + res.status);
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOAD & POLL
+// ═══════════════════════════════════════════════════════
+async function loadAll() {
+  try {
+    const data = await api('all');
+    applySnapshot(data, true);
+    setConn('ok', CFG.mode==='local' ? 'Local mode' : 'Connected');
+    return true;
+  } catch(e) {
+    setConn('err', CFG.mode==='local' ? 'Local error' : 'Unreachable — check api.php');
+    showToast('Cannot load data: ' + e.message);
+    return false;
+  }
+}
+
+function applySnapshot(data, full=false) {
+  // ── Persons ──
+  const incomingPersonIds = new Set(data.persons.map(p=>p.id));
+  // Remove deleted
+  D.persons.forEach((_,id) => {
+    if (!incomingPersonIds.has(id)) {
+      D.persons.delete(id);
+      const el = document.getElementById('pc-'+id);
+      if(el) el.remove();
+    }
+  });
+  // Add/update
+  data.persons.forEach(p => {
+    const prev = D.persons.get(p.id);
+    D.persons.set(p.id, p);
+    const el = document.getElementById('pc-'+p.id);
+    if (p.canvas_x != null) {
+      if (!el) mountCard(p);
+      // Never refresh a card the user is actively dragging, and only
+      // re-render when the server row actually changed.
+      else if (!(UI.dragging && UI.dragging.id === p.id)
+               && (!prev || JSON.stringify(prev)!==JSON.stringify(p))) {
+        refreshCard(p.id);
+      }
+    } else if (el) {
+      el.remove();
+    }
+  });
+
+  // ── Couples ──
+  const incomingCoupleIds = new Set(data.couples.map(c=>c.id));
+  D.couples.forEach((_,id) => { if(!incomingCoupleIds.has(id)) D.couples.delete(id); });
+  data.couples.forEach(c => D.couples.set(c.id,c));
+
+  // ── Parent-child ──
+  const incomingPcIds = new Set(data.parent_child.map(pc=>pc.id));
+  D.parentChild.forEach((_,id) => { if(!incomingPcIds.has(id)) D.parentChild.delete(id); });
+  data.parent_child.forEach(pc => D.parentChild.set(pc.id,pc));
+
+  draw();
+  renderUnassigned();
+  if(window.refreshWorkspace) refreshWorkspace();
+}
+
+function startPolling() {
+  clearInterval(UI.pollTimer);
+  const interval = Math.max(3, CFG.poll||6) * 1000;
+  UI.pollTimer = setInterval(async () => {
+    try {
+      const data = await api('all');
+      applySnapshot(data);
+      setConn('ok','Connected');
+    } catch { setConn('err','Poll failed'); }
+  }, interval);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW (SVG)
+// ═══════════════════════════════════════════════════════
+function svgN(tag, a={}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const[k,v] of Object.entries(a)) el.setAttribute(k,v);
+  return el;
+}
+
+function cardGeom(personId) {
+  const p = D.persons.get(personId);
+  if(!p || p.canvas_x==null) return null;
+  const el = document.getElementById('pc-'+personId);
+  if(!el) return null;
+  return {
+    cx: p.canvas_x+el.offsetWidth/2,  cy: p.canvas_y+el.offsetHeight/2,
+    top:p.canvas_y, bot:p.canvas_y+el.offsetHeight,
+    x:p.canvas_x,   y:p.canvas_y, w:el.offsetWidth, h:el.offsetHeight,
+  };
+}
+
+function draw() {
+  const lsvg = document.getElementById('lsvg');
+  const cc = UI.childColor;
+  lsvg.innerHTML = `<defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="${cc}" opacity=".8"/>
+    </marker></defs>`;
+  if(UI.grid) drawGenBands();
+
+  // ── 1. Couple lines ──
+  for(const c of D.couples.values()) {
+    const g1=cardGeom(c.person1_id), g2=cardGeom(c.person2_id);
+    if(!g1||!g2) continue;
+    const x1=g1.cx,y1=g1.cy,x2=g2.cx,y2=g2.cy;
+    const bcy=(y1+y2)/2, mx=(x1+x2)/2, my=(y1+y2)/2;
+    const col=c.line_color||'#2563eb';
+
+    // Hit area
+    const hit=svgN('path',{d:`M${x1},${y1} C${x1},${bcy} ${x2},${bcy} ${x2},${y2}`,
+      fill:'none',stroke:'transparent','stroke-width':'16',cursor:'pointer'});
+    hit.classList.add('hit');
+    hit.addEventListener('click',()=>openCoupleModal(c.id));
+    lsvg.appendChild(hit);
+
+    // Visible line
+    lsvg.appendChild(svgN('path',{
+      d:`M${x1},${y1} C${x1},${bcy} ${x2},${bcy} ${x2},${y2}`,
+      fill:'none',stroke:col,'stroke-width':'2.5',
+      'stroke-dasharray':c.rel_type==='married'?'none':'8,5',
+      'pointer-events':'none'
+    }));
+
+    // Divorce/widowed X
+    if(c.status==='divorced') drawX(lsvg,mx,my,'#dc2626',9);
+    else if(c.status==='widowed') drawX(lsvg,mx,my,'#1c1c1c',9);
+
+    // Date label
+    if(c.start_date||(c.status!=='active'&&c.end_date)) {
+      const sym=c.rel_type==='married'?'⚭':'∞';
+      const lines=[];
+      if(c.start_date) lines.push({t:`${sym} ${c.start_date}`,col});
+      if(c.start_place) lines.push({t:`📍 ${c.start_place}`,col:'#888'});
+      if(c.status==='divorced'&&c.end_date) lines.push({t:`✕ div. ${c.end_date}`,col:'#dc2626'});
+      if(c.status==='widowed' &&c.end_date) lines.push({t:`✕ wid. ${c.end_date}`,col:'#444'});
+      drawLabel(lsvg,mx,my,lines,col);
+    }
+  }
+
+  // ── 2. Child lines from couple midpoints (junction style) ──
+  const byCouple=new Map(), soloLinks=[];
+  for(const pc of D.parentChild.values()) {
+    if(pc.couple_id) {
+      if(!byCouple.has(pc.couple_id)) byCouple.set(pc.couple_id,[]);
+      byCouple.get(pc.couple_id).push(pc.child_id);
+    } else soloLinks.push(pc);
+  }
+
+  for(const [coupleId,childIds] of byCouple) {
+    const couple=D.couples.get(coupleId); if(!couple) continue;
+    const g1=cardGeom(couple.person1_id), g2=cardGeom(couple.person2_id);
+    if(!g1||!g2) continue;
+    const ox=(g1.cx+g2.cx)/2, oy=(g1.cy+g2.cy)/2;
+    const kids=childIds.map(id=>({id,g:cardGeom(id)})).filter(x=>x.g);
+    if(!kids.length) continue;
+    const minKidY=Math.min(...kids.map(k=>k.g.top));
+    const jY=oy+(minKidY-oy)*0.55;
+
+    lsvg.appendChild(svgN('line',{x1:ox,y1:oy,x2:ox,y2:jY,
+      stroke:cc,'stroke-width':'2','pointer-events':'none'}));
+
+    if(kids.length===1) {
+      const {g}=kids[0];
+      lsvg.appendChild(svgN('line',{x1:ox,y1:jY,x2:g.cx,y2:g.top,
+        stroke:cc,'stroke-width':'2','marker-end':'url(#arr)','pointer-events':'none'}));
+    } else {
+      const xs=kids.map(k=>k.g.cx);
+      lsvg.appendChild(svgN('line',{x1:Math.min(...xs),y1:jY,x2:Math.max(...xs),y2:jY,
+        stroke:cc,'stroke-width':'2','pointer-events':'none'}));
+      kids.forEach(({g})=>lsvg.appendChild(svgN('line',{
+        x1:g.cx,y1:jY,x2:g.cx,y2:g.top,
+        stroke:cc,'stroke-width':'2','marker-end':'url(#arr)','pointer-events':'none'})));
+    }
+  }
+
+  // ── 3. Solo parent lines ──
+  for(const pc of soloLinks) {
+    const gp=cardGeom(pc.parent_id), gc=cardGeom(pc.child_id);
+    if(!gp||!gc) continue;
+    const bcy=(gp.cy+gc.top)/2;
+    lsvg.appendChild(svgN('path',{
+      d:`M${gp.cx},${gp.cy} C${gp.cx},${bcy} ${gc.cx},${bcy} ${gc.cx},${gc.top}`,
+      fill:'none',stroke:cc,'stroke-width':'2','stroke-dasharray':'6,3',
+      'marker-end':'url(#arr)','pointer-events':'none'}));
+  }
+}
+
+function drawX(svg,mx,my,col,s) {
+  svg.appendChild(svgN('line',{x1:mx-s,y1:my-s,x2:mx+s,y2:my+s,stroke:col,'stroke-width':'3','pointer-events':'none','stroke-linecap':'round'}));
+  svg.appendChild(svgN('line',{x1:mx+s,y1:my-s,x2:mx-s,y2:my+s,stroke:col,'stroke-width':'3','pointer-events':'none','stroke-linecap':'round'}));
+}
+
+function drawLabel(svg,mx,my,lines,borderCol) {
+  if(!lines.length) return;
+  const LH=15,PX=8,PY=4;
+  const bW=Math.max(Math.max(...lines.map(l=>l.t.length))*6.4+PX*2,60);
+  const bH=lines.length*LH+PY*2;
+  svg.appendChild(svgN('rect',{x:mx-bW/2,y:my-bH/2,width:bW,height:bH,
+    fill:'rgba(255,255,255,.94)',rx:'5',stroke:borderCol,'stroke-width':'1','pointer-events':'none'}));
+  lines.forEach((ln,i)=>{
+    const t=svgN('text',{x:mx,y:my-bH/2+PY+LH*(i+0.75),'text-anchor':'middle',
+      'font-family':'Nunito,sans-serif','font-size':'11','fill':ln.col,'pointer-events':'none'});
+    t.textContent=ln.t; svg.appendChild(t);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  GENERATION GRID
+// ═══════════════════════════════════════════════════════
+function drawGenBands() {
+  const gs=document.getElementById('gen-svg');
+  const W=UI.canvasW,GH=UI.gridH;
+  gs.innerHTML='';
+  const max=Math.ceil(UI.canvasH/GH);
+  for(let g=0;g<max;g++){
+    const y=g*GH;
+    gs.appendChild(svgN('rect',{x:0,y,width:W,height:GH,
+      fill:g%2===0?'rgba(0,0,0,0.025)':'rgba(0,0,0,0.005)','pointer-events':'none'}));
+    gs.appendChild(svgN('line',{x1:0,y1:y,x2:W,y2:y,
+      stroke:'rgba(0,0,0,0.08)','stroke-width':'1','pointer-events':'none'}));
+    const lbl=svgN('text',{x:8,y:y+16,'font-family':'Nunito,sans-serif','font-size':'12',
+      fill:'rgba(0,0,0,0.2)','pointer-events':'none'});
+    lbl.textContent=`Gen ${g+1}`;
+    gs.appendChild(lbl);
+  }
+}
+
+function snapY(y){return UI.grid?Math.round(y/UI.gridH)*UI.gridH+20:y;}
+
+// ═══════════════════════════════════════════════════════
+//  PERSON CARDS
+// ═══════════════════════════════════════════════════════
+function mountCard(p){
+  if(document.getElementById('pc-'+p.id)){refreshCard(p.id);return;}
+  const div=document.createElement('div');
+  div.className='pc';div.id='pc-'+p.id;
+  div.style.left=p.canvas_x+'px';div.style.top=p.canvas_y+'px';
+  div.style.borderLeftColor=gCol(p.gender);
+  div.innerHTML=buildCard(p);
+  div.addEventListener('mousedown',e=>{
+    if(e.target.tagName==='BUTTON')return;
+    e.preventDefault();
+    const cw=document.getElementById('cwrap'),wr=cw.getBoundingClientRect();
+    UI.dragging={id:p.id,
+      sx:(e.clientX-wr.left+cw.scrollLeft)/view.zoom,sy:(e.clientY-wr.top+cw.scrollTop)/view.zoom,
+      ox:p.canvas_x,oy:p.canvas_y};
+    div.classList.add('dragging');
+  });
+  div.addEventListener('click',e=>{
+    if(e.target.tagName==='BUTTON')return;
+    if(UI.connectMode==='child'){finishAddChild(p.id);return;}
+    if(UI.connectMode&&UI.connectFrom!==p.id)finishConnect(p.id);
+    else if(!UI.connectMode) selectPerson(p.id);
+  });
+  div.addEventListener('dblclick',e=>{if(e.target.tagName!=='BUTTON')openEditPerson(p.id);});
+  document.getElementById('cinner').appendChild(div);
+}
+
+function buildCard(p){
+  const fn=[p.first_name,p.last_name].filter(Boolean).join(' ')||'(unnamed)';
+  const years=[p.birth_date,p.death_date].map(d=>d?.match(/\d{4}$/)?.[0]||'');
+  const summary=years.some(Boolean)?`${years[0]||'?'}–${years[1]||''}`:'Dates unknown';
+  const secondary=p.birth_place||p.occupation||'';
+  return `
+    <div class="pc-top"><div class="avatar">${esc((p.first_name||p.last_name||'?').charAt(0).toUpperCase())}</div><div class="pc-text"><div class="pc-name">${esc(fn)}</div><div class="pc-lifespan">${esc(summary)}</div></div><button class="card-more" title="Open details" aria-label="Open details for ${esc(fn)}" onclick="selectPerson('${p.id}')">⋯</button></div>
+    ${secondary?`<div class="pc-secondary">${esc(secondary)}</div>`:''}`;
+}
+
+function refreshCard(id){
+  const p=D.persons.get(id);if(!p)return;
+  const el=document.getElementById('pc-'+id);if(!el)return;
+  el.style.borderLeftColor='var(--ac)';
+  el.style.left=(p.canvas_x||0)+'px';el.style.top=(p.canvas_y||0)+'px';
+  el.innerHTML=buildCard(p);
+}
+
+function refreshAllCards(){D.persons.forEach(p=>{if(p.canvas_x!=null)refreshCard(p.id);});}
+function gCol(g){return g==='male'?'#3b82f6':g==='female'?'#ec4899':'#94a3b8';}
+function boldY(d){
+  if(!d)return'';const p=d.split('/');
+  if(p.length===3)return`${esc(p[0])}/${esc(p[1])}/<b>${esc(p[2])}</b>`;
+  if(p.length===2)return`${esc(p[0])}/<b>${esc(p[1])}</b>`;
+  return`<b>${esc(d)}</b>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAG
+// ═══════════════════════════════════════════════════════
+document.addEventListener('mousemove',e=>{
+  if(!UI.dragging)return;
+  const cw=document.getElementById('cwrap'),wr=cw.getBoundingClientRect();
+  const mx=(e.clientX-wr.left+cw.scrollLeft)/view.zoom,my=(e.clientY-wr.top+cw.scrollTop)/view.zoom;
+  const p=D.persons.get(UI.dragging.id);if(!p)return;
+  p.canvas_x=Math.max(0,UI.dragging.ox+(mx-UI.dragging.sx));
+  p.canvas_y=snapY(Math.max(0,UI.dragging.oy+(my-UI.dragging.sy)));
+  const el=document.getElementById('pc-'+p.id);
+  if(el){el.style.left=p.canvas_x+'px';el.style.top=p.canvas_y+'px';}
+  draw();
+});
+document.addEventListener('mouseup',()=>{
+  if(!UI.dragging)return;
+  const id=UI.dragging.id;
+  const before=UI.dragging;
+  document.getElementById('pc-'+id)?.classList.remove('dragging');
+  const p=D.persons.get(id);
+  UI.dragging=null;
+  if(p&&(p.canvas_x!==before.ox||p.canvas_y!==before.oy)){
+    clearTimeout(UI.posDebounce[id]);
+    UI.posDebounce[id]=setTimeout(()=>{
+      api('persons','PUT',{canvas_x:p.canvas_x,canvas_y:p.canvas_y},id).catch(e=>showToast('Position not saved: '+e.message));
+    },700);
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  CONNECT MODES
+// ═══════════════════════════════════════════════════════
+function hiCards(srcId){
+  D.persons.forEach(p=>{
+    const el=document.getElementById('pc-'+p.id);if(!el)return;
+    el.classList.remove('hi-src','hi-tgt');
+    if(p.id===srcId)el.classList.add('hi-src');
+    else if(p.canvas_x!=null)el.classList.add('hi-tgt');
+  });
+}
+function clearHi(){document.querySelectorAll('.pc').forEach(el=>el.classList.remove('hi-src','hi-tgt'));}
+
+function startCouple(pid,type,e){
+  e.stopPropagation();cancelConnect(true);
+  UI.connectMode=type;UI.connectFrom=pid;
+  setBanner(`${type==='married'?'💍':'🤝'} Click another person to link as ${type==='married'?'married':'partners'}`,'bn-'+(type==='married'?'wed':'unw'));
+  hiCards(pid);
+}
+async function finishConnect(toId){
+  const fromId=UI.connectFrom,type=UI.connectMode;
+  if(!fromId||fromId===toId){cancelConnect();return;}
+  const dup=[...D.couples.values()].some(c=>(c.person1_id===fromId&&c.person2_id===toId)||(c.person1_id===toId&&c.person2_id===fromId));
+  if(dup){showToast('Already linked as a couple');cancelConnect();return;}
+  const color=nextBlue(fromId);
+  try{
+    const row=await api('couples','POST',{person1_id:fromId,person2_id:toId,rel_type:type,line_color:color});
+    D.couples.set(row.id,row);draw();showToast('Couple linked');
+  }catch(er){showToast('Error: '+er.message);}
+  cancelConnect();
+}
+
+function startSolo(pid,e){
+  e.stopPropagation();cancelConnect(true);
+  UI.connectMode='solo';UI.connectFrom=pid;
+  setBanner('👪 Click a person to link as their child (solo parent)','bn-par');
+  hiCards(pid);
+}
+async function finishSolo(toId){
+  const fromId=UI.connectFrom;
+  if(!fromId||fromId===toId){cancelConnect();return;}
+  try{
+    const row=await api('parent_child','POST',{parent_id:fromId,child_id:toId});
+    D.parentChild.set(row.id,row);draw();showToast('Parent link added');
+  }catch(er){showToast('Error: '+er.message);}
+  cancelConnect();
+}
+
+function startAddChild(){
+  const coupleId=UI.editCoupleId;if(!coupleId)return;
+  closeModal('cmov');
+  UI.connectMode='child';UI.connectFrom=coupleId;
+  const c=D.couples.get(coupleId);
+  const n=p=>p?[p.first_name,p.last_name].filter(Boolean).join(' ')||'?':'?';
+  setBanner(`👶 Click person to add as child of ${n(D.persons.get(c?.person1_id))} & ${n(D.persons.get(c?.person2_id))}`,'bn-child');
+  D.persons.forEach(p=>{
+    const el=document.getElementById('pc-'+p.id);if(!el)return;
+    el.classList.remove('hi-src','hi-tgt');el.classList.add('hi-tgt');
+  });
+}
+async function finishAddChild(childId){
+  const coupleId=UI.connectFrom;
+  const dup=[...D.parentChild.values()].some(pc=>pc.couple_id===coupleId&&pc.child_id===childId);
+  if(dup){showToast('Already a child of this couple');cancelConnect();return;}
+  const c=D.couples.get(coupleId);if(!c){cancelConnect();return;}
+  try{
+    const r1=await api('parent_child','POST',{parent_id:c.person1_id,child_id:childId,couple_id:coupleId});
+    D.parentChild.set(r1.id,r1);
+    const al=[...D.parentChild.values()].some(pc=>pc.parent_id===c.person2_id&&pc.child_id===childId);
+    if(!al){const r2=await api('parent_child','POST',{parent_id:c.person2_id,child_id:childId,couple_id:coupleId});D.parentChild.set(r2.id,r2);}
+    draw();showToast('Child added');
+  }catch(er){showToast('Error: '+er.message);}
+  cancelConnect();
+}
+
+function cancelConnect(){
+  UI.connectMode=null;UI.connectFrom=null;
+  document.getElementById('banner').className='';clearHi();
+}
+function setBanner(txt,cls){document.getElementById('btxt').textContent=txt;document.getElementById('banner').className='on '+cls;}
+function nextBlue(pid){
+  const n=[...D.couples.values()].filter(c=>c.person1_id===pid||c.person2_id===pid).length;
+  return MARRIAGE_BLUES[n%MARRIAGE_BLUES.length];
+}
+
+// ═══════════════════════════════════════════════════════
+//  PERSON MODAL
+// ═══════════════════════════════════════════════════════
+function openAddPerson(){
+  UI.editPersonId=null;
+  document.getElementById('pm-title').textContent='Add Person';
+  document.getElementById('pm-del').style.display='none';
+  ['p-first','p-last','p-maiden','p-bdate','p-bplace','p-ddate','p-dplace','p-occ','p-edu','p-eye','p-hair','p-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-gender').value='';
+  openTab(document.querySelector('#pmov .tab-btn'),'t-identity');
+  showModal('pmov');
+}
+function openEditPerson(id){
+  const p=D.persons.get(id);if(!p)return;
+  UI.editPersonId=id;
+  document.getElementById('pm-title').textContent='Edit Person';
+  document.getElementById('pm-del').style.display='block';
+  const f=(k,v)=>{const el=document.getElementById(k);if(el)el.value=v||'';};
+  f('p-first',p.first_name);f('p-last',p.last_name);f('p-maiden',p.maiden_name);
+  f('p-bdate',p.birth_date);f('p-bplace',p.birth_place);
+  f('p-ddate',p.death_date);f('p-dplace',p.death_place);
+  f('p-occ',p.occupation);f('p-edu',p.education);
+  f('p-eye',p.eye_color);f('p-hair',p.hair_color);f('p-notes',p.notes);
+  document.getElementById('p-gender').value=p.gender||'';
+  openTab(document.querySelector('#pmov .tab-btn'),'t-identity');
+  showModal('pmov');
+}
+
+async function savePerson(){
+  const g=id=>document.getElementById(id).value.trim();
+  const data={
+    first_name:g('p-first'),last_name:g('p-last'),maiden_name:g('p-maiden'),
+    gender:g('p-gender')||null,
+    birth_date:g('p-bdate'),birth_place:g('p-bplace'),
+    death_date:g('p-ddate'),death_place:g('p-dplace'),
+    occupation:g('p-occ'),education:g('p-edu'),
+    eye_color:g('p-eye'),hair_color:g('p-hair'),notes:g('p-notes'),
+  };
+  for(const dk of['birth_date','death_date'])
+    if(data[dk]&&!validDate(data[dk])){showToast('Date format: YYYY, MM/YYYY or DD/MM/YYYY');return;}
+  if(!UI.editPersonId){
+    const norm=s=>String(s||'').trim().toLocaleLowerCase();
+    const duplicate=[...D.persons.values()].find(p=>norm(p.first_name)===norm(data.first_name)&&norm(p.last_name)===norm(data.last_name)&&
+      ((p.birth_date&&data.birth_date&&norm(p.birth_date)===norm(data.birth_date))||
+       (!p.birth_date&&!data.birth_date&&norm(p.birth_place)===norm(data.birth_place))));
+    if(duplicate&&!confirm(`${personName(duplicate)} may already exist. Create another record?`))return;
+  }
+  try{
+    if(UI.editPersonId){
+      await api('persons','PUT',data,UI.editPersonId);
+      const p=D.persons.get(UI.editPersonId);Object.assign(p,data);
+      refreshCard(UI.editPersonId);draw();showToast('Updated ✓');
+    }else{
+      const cw=document.getElementById('cwrap');
+      data.canvas_x=(cw.scrollLeft+cw.clientWidth/2)/view.zoom-90;
+      data.canvas_y=snapY((cw.scrollTop+cw.clientHeight/2)/view.zoom-60);
+      const row=await api('persons','POST',data);
+      D.persons.set(row.id,row);mountCard(row);draw();showToast('Person added ✓');
+    }
+    closeModal('pmov');
+    recordHistory();refreshWorkspace();
+  }catch(er){showToast('Error: '+er.message);}
+}
+
+async function deletePersonDirect(id){
+  const p=D.persons.get(id);
+  if(!confirm(`Delete ${[p?.first_name,p?.last_name].filter(Boolean).join(' ')||'this person'}?`))return;
+  try{
+    await api('persons','DELETE',null,id);
+    D.persons.delete(id);
+    const el=document.getElementById('pc-'+id);if(el)el.remove();
+    draw();renderUnassigned();selectPerson(null);recordHistory();refreshWorkspace();showToast('Deleted');
+  }catch(er){showToast('Error: '+er.message);}
+}
+function deletePersonModal(){if(UI.editPersonId){closeModal('pmov');deletePersonDirect(UI.editPersonId);}}
+
+// ═══════════════════════════════════════════════════════
+//  COUPLE MODAL
+// ═══════════════════════════════════════════════════════
+function openCoupleModal(id){
+  const c=D.couples.get(id);if(!c)return;
+  UI.editCoupleId=id;
+  const p1=D.persons.get(c.person1_id),p2=D.persons.get(c.person2_id);
+  const n=p=>p?[p.first_name,p.last_name].filter(Boolean).join(' ')||'(unnamed)':'?';
+  document.getElementById('cm-info').textContent=`${n(p1)}  ↔  ${n(p2)}`;
+  document.getElementById('cm-type').value=c.rel_type;
+  document.getElementById('cm-start').value=c.start_date||'';
+  document.getElementById('cm-place').value=c.start_place||'';
+  document.getElementById('cm-status').value=c.status;
+  document.getElementById('cm-end').value=c.end_date||'';
+  document.getElementById('cm-endpl').value=c.end_place||'';
+  document.getElementById('cm-color').value=c.line_color||'#2563eb';
+  document.getElementById('cm-hex').value=c.line_color||'#2563eb';
+  onCoupleStatusChange();onCoupleTypeChange();
+  renderCoupleKids(id);
+  showModal('cmov');
+}
+function onCoupleTypeChange(){
+  const w=document.getElementById('cm-type').value==='married';
+  document.getElementById('cm-title').textContent=w?'Marriage':'Partnership';
+  document.getElementById('cm-sl').textContent=w?'Marriage Date':'Start Date';
+  document.getElementById('cm-pl').textContent=w?'Marriage Place':'Place';
+  document.getElementById('cm-el').textContent=w?'End Date':'End Date';
+}
+function onCoupleStatusChange(){
+  document.getElementById('cm-end-wrap').style.display=
+    document.getElementById('cm-status').value==='active'?'none':'block';
+}
+async function saveCouple(){
+  const g=id=>document.getElementById(id).value.trim();
+  const data={rel_type:g('cm-type'),start_date:g('cm-start'),start_place:g('cm-place'),
+    status:g('cm-status'),end_date:g('cm-end'),end_place:g('cm-endpl'),line_color:g('cm-color')};
+  for(const dk of['start_date','end_date'])
+    if(data[dk]&&!validDate(data[dk])){showToast('Invalid date format');return;}
+  try{
+    await api('couples','PUT',data,UI.editCoupleId);
+    const c=D.couples.get(UI.editCoupleId);Object.assign(c,data);
+    closeModal('cmov');draw();showToast('Saved ✓');
+  }catch(er){showToast('Error: '+er.message);}
+}
+async function deleteCouple(){
+  if(!confirm('Delete this relationship?'))return;
+  try{
+    await api('couples','DELETE',null,UI.editCoupleId);
+    D.couples.delete(UI.editCoupleId);
+    // Nullify couple_id references
+    for(const[pcid,pc]of D.parentChild){
+      if(pc.couple_id===UI.editCoupleId){
+        await api('parent_child','PUT',{couple_id:null},pcid);
+        pc.couple_id=null;
+      }
+    }
+    closeModal('cmov');draw();showToast('Deleted');
+  }catch(er){showToast('Error: '+er.message);}
+}
+function renderCoupleKids(coupleId){
+  const seen=new Set();
+  const kids=[...D.parentChild.values()]
+    .filter(pc=>pc.couple_id===coupleId)
+    .map(pc=>D.persons.get(pc.child_id)).filter(p=>p&&!seen.has(p.id)&&seen.add(p.id));
+  const el=document.getElementById('cm-children');
+  el.innerHTML=kids.length===0?'<div style="font-size:12px;color:var(--mu);padding:4px 0">No children yet.</div>':'';
+  kids.forEach(k=>{
+    const nm=[k.first_name,k.last_name].filter(Boolean).join(' ')||'(unnamed)';
+    const row=document.createElement('div');row.className='child-row';
+    row.innerHTML=`<span>${esc(nm)}</span><button class="child-rm" onclick="removeChild('${coupleId}','${k.id}')">×</button>`;
+    el.appendChild(row);
+  });
+}
+async function removeChild(coupleId,childId){
+  const pcs=[...D.parentChild.values()].filter(pc=>pc.couple_id===coupleId&&pc.child_id===childId);
+  for(const pc of pcs){await api('parent_child','DELETE',null,pc.id);D.parentChild.delete(pc.id);}
+  draw();renderCoupleKids(coupleId);showToast('Child unlinked');
+}
+
+// ═══════════════════════════════════════════════════════
+//  UNASSIGNED
+// ═══════════════════════════════════════════════════════
+function renderUnassigned(){
+  const un=[...D.persons.values()].filter(p=>p.canvas_x==null);
+  document.getElementById('unassigned-count').textContent=un.length;
+  const el=document.getElementById('unassigned-list');
+  el.innerHTML=un.length===0?'<div style="font-size:12px;color:var(--mu);padding:4px 0">All persons placed.</div>':'';
+  un.forEach(p=>{
+    const nm=[p.first_name,p.last_name].filter(Boolean).join(' ')||'(unnamed)';
+    const div=document.createElement('div');div.className='unassigned-item';
+    div.innerHTML=`<span class="uname">${esc(nm)}</span><span class="ubirth">${p.birth_date?boldY(p.birth_date):''}</span>
+      <button class="btn-sm" onclick="placeOnCanvas('${p.id}')">＋ Place</button>
+      <button class="btn-sm" style="border-color:#fecaca;color:#dc2626" onclick="deletePersonDirect('${p.id}')">🗑</button>`;
+    el.appendChild(div);
+  });
+}
+async function placeOnCanvas(id){
+  const cw=document.getElementById('cwrap');
+  const cx=(cw.scrollLeft+cw.clientWidth/2)/view.zoom-90+Math.random()*60-30;
+  const cy=snapY((cw.scrollTop+cw.clientHeight/2)/view.zoom-60+Math.random()*40-20);
+  try{
+    await api('persons','PUT',{canvas_x:cx,canvas_y:cy},id);
+    const p=D.persons.get(id);p.canvas_x=cx;p.canvas_y=cy;
+    mountCard(p);draw();renderUnassigned();recordHistory();refreshWorkspace();
+  }catch(er){showToast('Error: '+er.message);}
+}
+
+// ═══════════════════════════════════════════════════════
+//  ATTRIBUTE TOGGLES
+// ═══════════════════════════════════════════════════════
+function initAttrs(){
+  const saved=JSON.parse(localStorage.getItem(ATTR_KEY)||'{}');
+  ATTR_DEFS.forEach(a=>{attrs[a.key]=a.key in saved?saved[a.key]:a.def;});
+  const el=document.getElementById('attr-toggles');el.innerHTML='';
+  ATTR_DEFS.forEach(a=>{
+    const row=document.createElement('div');row.className='toggle-row';
+    row.innerHTML=`<span class="toggle-lbl">${a.label}</span>
+      <label class="tog"><input type="checkbox" ${attrs[a.key]?'checked':''} onchange="toggleAttr('${a.key}',this.checked)">
+      <div class="tog-track"></div><div class="tog-thumb"></div></label>`;
+    el.appendChild(row);
+  });
+}
+function toggleAttr(key,val){
+  attrs[key]=val;localStorage.setItem(ATTR_KEY,JSON.stringify(attrs));
+  refreshAllCards();draw();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS SETTINGS
+// ═══════════════════════════════════════════════════════
+function applyCanvasSize(){
+  UI.canvasW=+document.getElementById('cw').value||3000;
+  UI.canvasH=+document.getElementById('ch').value||2200;
+  const ci=document.getElementById('cinner');
+  ci.style.width=UI.canvasW+'px';ci.style.height=UI.canvasH+'px';
+  ['lsvg','gen-svg'].forEach(sid=>{
+    const s=document.getElementById(sid);
+    s.setAttribute('width',UI.canvasW);s.setAttribute('height',UI.canvasH);
+    s.setAttribute('viewBox',`0 0 ${UI.canvasW} ${UI.canvasH}`);
+  });
+  draw();
+}
+function applyCanvasBg(){document.getElementById('cinner').style.background=document.getElementById('canvas-bg').value;}
+function applyGrid(){
+  UI.grid=document.getElementById('grid-tog').checked;
+  UI.gridH=+document.getElementById('grid-h').value||220;
+  document.getElementById('grid-opts').style.display=UI.grid?'block':'none';
+  draw();
+}
+function applyChildColor(){UI.childColor=document.getElementById('child-col').value;draw();}
+
+// ═══════════════════════════════════════════════════════
+//  MODAL HELPERS
+// ═══════════════════════════════════════════════════════
+function showModal(id){document.getElementById(id).classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');UI.editPersonId=null;UI.editCoupleId=null;}
+function ovClose(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+function openTab(btn,paneId){
+  const mdl=btn.closest('.mdl');
+  mdl.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  mdl.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');document.getElementById(paneId).classList.add('active');
+}
+function toggleSec(hdr){
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('closed');
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONFIG SAVE
+// ═══════════════════════════════════════════════════════
+async function saveConfig(){
+  CFG.mode=document.getElementById('cfg-mode').value||'server';
+  CFG.url=document.getElementById('cfg-url').value.trim()||'./api.php';
+  CFG.key=document.getElementById('cfg-key').value.trim();
+  CFG.poll=+document.getElementById('cfg-poll').value||6;
+  localStorage.setItem(CONF_KEY,JSON.stringify(CFG));
+  setConn('wait','Connecting…');
+  const ok=await loadAll();
+  if(ok){closeModal('setup-ov');if(CFG.mode==='server')startPolling();else clearInterval(UI.pollTimer);updateHistoryButtons();}
+}
+
+// ═══════════════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const open=document.querySelector('.mov.on');
+    if(open)open.classList.remove('on');else cancelConnect();
+  }
+  if(e.key==='Enter'&&!e.shiftKey){
+    if(document.getElementById('pmov').classList.contains('on'))savePerson();
+    if(document.getElementById('setup-ov').classList.contains('on'))saveConfig();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════
+async function exportPNG(){
+  if(typeof html2canvas==='undefined'){showToast('Library not loaded');return;}
+  showToast('Rendering…');
+  try{
+    const cvs=await html2canvas(document.getElementById('cinner'),{useCORS:true,scale:1.5});
+    const a=document.createElement('a');a.download='family-tree.png';a.href=cvs.toDataURL();a.click();
+    showToast('PNG exported ✓');
+  }catch{showToast('Export failed');}
+}
+async function exportPDF(){
+  if(typeof html2canvas==='undefined'||!window.jspdf){showToast('Library not loaded');return;}
+  showToast('Rendering PDF…');
+  try{
+    const cvs=await html2canvas(document.getElementById('cinner'),{useCORS:true,scale:1.5});
+    const img=cvs.toDataURL('image/png');
+    const{jsPDF}=window.jspdf;const W=cvs.width,H=cvs.height;
+    const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H],hotfixes:['px_scaling']});
+    pdf.addImage(img,'PNG',0,0,W,H);pdf.save('family-tree.pdf');
+    showToast('PDF exported ✓');
+  }catch{showToast('PDF failed');}
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOCAL (no-backend) STORAGE
+// ═══════════════════════════════════════════════════════
+const LOCAL_KEY = 'ft_preview_local_data';
+const LOCAL_COLS = {
+  persons: {
+    str:['first_name','last_name','maiden_name','gender','birth_date','birth_place',
+         'death_date','death_place','occupation','education','eye_color','hair_color','notes'],
+    num:['canvas_x','canvas_y'],
+  },
+  couples: {
+    str:['person1_id','person2_id','rel_type','start_date','start_place','status','end_date','end_place','line_color'],
+    num:[],
+  },
+  parent_child: { str:['parent_id','child_id','couple_id'], num:[] },
+};
+function uid(){
+  return crypto.randomUUID ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+        const r=Math.random()*16|0,v=c==='x'?r:(r&3|0x8);return v.toString(16);});
+}
+function lread(){
+  try{ const d=JSON.parse(localStorage.getItem(LOCAL_KEY));
+       if(d && Array.isArray(d.persons)) return d; }catch{}
+  return { persons:[], couples:[], parent_child:[] };
+}
+function lwrite(d){ localStorage.setItem(LOCAL_KEY, JSON.stringify(d)); }
+function lnow(){ return new Date().toISOString().slice(0,19).replace('T',' '); }
+function lpick(row, cols){
+  const out={};
+  cols.forEach(k=>{ if(Object.prototype.hasOwnProperty.call(row,k)){ let v=row[k]; out[k]= v===''?null:v; } });
+  return out;
+}
+async function localApi(resource, method='GET', body=null, id=''){
+  const db = lread();
+  if (resource==='all') return { persons:db.persons, couples:db.couples, parent_child:db.parent_child };
+  if (resource==='import' && method==='POST'){
+    const nd = { persons:Array.isArray(body&&body.persons)?body.persons:[],
+                 couples:Array.isArray(body&&body.couples)?body.couples:[],
+                 parent_child:Array.isArray(body&&body.parent_child)?body.parent_child:[] };
+    lwrite(nd);
+    return { success:true, counts:{persons:nd.persons.length,couples:nd.couples.length,parent_child:nd.parent_child.length} };
+  }
+  const cols = LOCAL_COLS[resource];
+  if(!cols) throw new Error('Unknown local resource: '+resource);
+  const table = db[resource];
+
+  if (method==='GET') return id ? (table.find(r=>r.id===id)||null) : table.slice();
+
+  if (method==='POST'){
+    const row = Object.assign({ id:uid(), created_at:lnow(), updated_at:lnow() },
+                              lpick(body||{}, cols.str.concat(cols.num)));
+    if (resource==='couples'){
+      row.rel_type=row.rel_type||'married'; row.status=row.status||'active';
+      row.line_color=row.line_color||'#2563eb';
+    }
+    table.push(row); lwrite(db); return row;
+  }
+  if (method==='PUT' || method==='PATCH'){
+    const row = table.find(r=>r.id===id);
+    if(!row) throw new Error('Not found');
+    Object.assign(row, lpick(body||{}, cols.str.concat(cols.num)), { updated_at:lnow() });
+    lwrite(db); return { success:true };
+  }
+  if (method==='DELETE'){
+    if (resource==='persons'){
+      db.couples = db.couples.filter(c=>c.person1_id!==id && c.person2_id!==id);
+      db.parent_child = db.parent_child.filter(pc=>pc.parent_id!==id && pc.child_id!==id);
+    } else if (resource==='couples'){
+      db.parent_child.forEach(pc=>{ if(pc.couple_id===id) pc.couple_id=null; });
+    }
+    db[resource] = table.filter(r=>r.id!==id);
+    lwrite(db); return { success:true };
+  }
+  throw new Error('Method not allowed');
+}
+
+// ═══════════════════════════════════════════════════════
+//  JSON EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+function downloadFile(name, content, type){
+  const blob=new Blob([content],{type:type||'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function exportJSON(){
+  try{
+    const data=await api('all');
+    const payload={
+      format:'family-tree', version:1, exported_at:new Date().toISOString(),
+      persons:data.persons||[], couples:data.couples||[], parent_child:data.parent_child||[],
+    };
+    const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    downloadFile('family-tree-'+stamp+'.json', JSON.stringify(payload,null,2));
+    showToast('JSON exported ✓');
+  }catch(e){ showToast('Export failed: '+e.message); }
+}
+function triggerImport(){ document.getElementById('import-file').click(); }
+async function onImportFile(ev){
+  const file=ev.target.files&&ev.target.files[0];
+  ev.target.value='';
+  if(!file) return;
+  let payload;
+  try{
+    const raw=await file.text();
+    payload=/\.(ged|gedcom)$/i.test(file.name)||/^0 HEAD\b/m.test(raw)?parseGEDCOM(raw):JSON.parse(raw);
+  }
+  catch(e){ showToast('Import failed: '+e.message); return; }
+  if(!payload || !Array.isArray(payload.persons)){ showToast('Not a family-tree export file'); return; }
+  if(!confirm('Replace ALL current data with '+payload.persons.length+' people from this file?')) return;
+  try{
+    await api('import','POST',{
+      persons:payload.persons, couples:payload.couples||[], parent_child:payload.parent_child||[]
+    });
+    await loadAll(); if(CFG.mode==='server')startPolling();
+    showToast('Imported '+payload.persons.length+' people ✓');
+  }catch(e){ showToast('Import failed: '+e.message); }
+}
+async function loadSample(){
+  try{
+    const res=await fetch('./family-tree-demo.json');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const payload=await res.json();
+    if(!Array.isArray(payload.persons)) throw new Error('bad file');
+    if(!confirm('Load the sample family? This replaces current data.')) return;
+    await api('import','POST',{
+      persons:payload.persons, couples:payload.couples||[], parent_child:payload.parent_child||[]
+    });
+    await loadAll(); if(CFG.mode==='server')startPolling();
+    showToast('Sample family loaded ✓');
+  }catch(e){ showToast('Sample load failed: '+e.message); }
+}
+function onModeChange(){
+  const mode=document.getElementById('cfg-mode').value;
+  document.getElementById('server-fields').style.display = mode==='local' ? 'none' : 'block';
+  const s=document.getElementById('btn-sample');
+  if(s) s.style.display = mode==='local' ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function validDate(v){return/^\d{4}$/.test(v)||/^\d{1,2}\/\d{4}$/.test(v)||/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v);}
+function setConn(st,txt){
+  document.getElementById('conn-dot').className='conn-dot '+st;
+  document.getElementById('conn-lbl').textContent=txt;
+  const label=document.getElementById('toolbar-status');if(label)label.textContent=st==='ok'?'● '+(CFG.mode==='local'?'Local':'Saved'):st==='err'?'● Offline':'● Connecting';
+}
+let _tt;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'),2600);}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+async function init(){
+  initAttrs();
+  applyCanvasSize();
+  applyCanvasBg();
+  const saved=JSON.parse(localStorage.getItem(CONF_KEY)||'{}');
+  if(saved && Object.keys(saved).length){
+    CFG={...CFG,...saved};
+    document.getElementById('cfg-mode').value=CFG.mode||'server';
+    document.getElementById('cfg-url').value=CFG.url;
+    document.getElementById('cfg-key').value=CFG.key||'';
+    document.getElementById('cfg-poll').value=CFG.poll||6;
+  }
+  onModeChange();
+  setConn('wait','Connecting…');
+  const ok=await loadAll();
+  if(ok){
+    if(CFG.mode!=='local') startPolling();
+  } else if(CFG.mode!=='local'){
+    setTimeout(()=>showModal('setup-ov'),600);
+  }
+}
+
+init();
+</script>
+<script src="./gedcom.js"></script>
+<script src="./workspace.js"></script>
+</body>
+</html>
