@@ -52,4 +52,6 @@ button,input,select,textarea{font:inherit}button:focus-visible,input:focus-visib
 [data-theme=midnight] .btn-add-child{background:#2b4033;color:var(--tx);border-color:var(--sbb)}
 [data-theme=midnight] input[type=number]{background:#28342c;color:var(--tx);border-color:var(--sbb)}
 @media(max-width:900px){.toolbar-actions #theme-button{display:block}}
-@media(max-width:600px){.theme-button{font-size:0}.theme-button::first-letter{font-size:18px}#theme-menu{right:-52px}}
+@media(max-width:600px){.theme-button{font-size:12px;padding:0 8px}#theme-menu{right:-52px}}
+.swatch.system{background:linear-gradient(135deg,#fff 50%,#222b27 50%)}
+#theme-menu button[aria-pressed=true]{background:color-mix(in srgb,var(--ac) 16%,var(--sb));font-weight:700}
