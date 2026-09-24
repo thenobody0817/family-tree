@@ -142,7 +142,7 @@ input[type=number]:focus{border-color:var(--ac)}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,.9);color:#f5f5f5;padding:9px 24px;border-radius:24px;font-size:13px;font-weight:600;pointer-events:none;opacity:0;transition:opacity .3s;z-index:800}
 #toast.on{opacity:1}
 </style>
-<link href="./workspace.css?v=4" rel="stylesheet">
+<link href="./workspace.css?v=5" rel="stylesheet">
 </head>
 <body>
 <nav id="rail" aria-label="Main navigation">
@@ -250,7 +250,7 @@ input[type=number]:focus{border-color:var(--ac)}
   <header id="toolbar">
     <div class="brand"><strong>Family Tree Preview</strong><span>Research workspace</span></div>
     <div class="search-box"><span aria-hidden="true">⌕</span><input id="person-search" type="search" placeholder="Find a person…" aria-label="Find a person" autocomplete="off"><div id="search-results" role="listbox"></div></div>
-    <div class="toolbar-actions"><button id="undo-btn" class="tool-btn" title="Undo" aria-label="Undo" onclick="historyStep(-1)">↶</button><button id="redo-btn" class="tool-btn" title="Redo" aria-label="Redo" onclick="historyStep(1)">↷</button><span id="toolbar-status">Connecting…</span><div class="theme-switcher"><button id="theme-button" class="tool-btn theme-button" onclick="toggleThemeMenu()" aria-label="Choose theme">◐ Theme</button><div id="theme-menu" hidden><button onclick="setTheme('botanical')"><i class="swatch botanical"></i>Botanical</button><button onclick="setTheme('archive')"><i class="swatch archive"></i>Archive</button><button onclick="setTheme('slate')"><i class="swatch slate"></i>Slate</button><button onclick="setTheme('midnight')"><i class="swatch midnight"></i>Midnight</button></div></div><button class="primary-action" onclick="openAddPerson()">＋ Add person</button></div>
+    <div class="toolbar-actions"><button id="undo-btn" class="tool-btn" title="Undo" aria-label="Undo" onclick="historyStep(-1)">↶</button><button id="redo-btn" class="tool-btn" title="Redo" aria-label="Redo" onclick="historyStep(1)">↷</button><span id="toolbar-status">Connecting…</span><div class="theme-switcher"><button id="theme-button" class="tool-btn theme-button" onclick="toggleThemeMenu()" aria-label="Choose theme" aria-expanded="false">◐ Theme</button><div id="theme-menu" hidden><button data-theme-choice="system" onclick="setTheme('system')"><i class="swatch system"></i>System</button><button data-theme-choice="botanical" onclick="setTheme('botanical')"><i class="swatch botanical"></i>Botanical</button><button data-theme-choice="archive" onclick="setTheme('archive')"><i class="swatch archive"></i>Archive</button><button data-theme-choice="slate" onclick="setTheme('slate')"><i class="swatch slate"></i>Slate</button><button data-theme-choice="midnight" onclick="setTheme('midnight')"><i class="swatch midnight"></i>Midnight</button></div></div><button class="primary-action" onclick="openAddPerson()">＋ Add person</button></div>
   </header>
   <div id="cwrap">
     <div id="empty-state" hidden><div class="empty-icon">✦</div><h2>Every family has a story.</h2><p>Add the first person, or explore the workspace with a sample family.</p><div><button class="primary-action" onclick="openAddPerson()">Add first person</button><button id="empty-sample" class="tool-btn" onclick="loadSample()">Explore sample</button></div></div>
@@ -1365,6 +1365,6 @@ async function init(){
 init();
 </script>
 <script src="./gedcom.js"></script>
-<script src="./workspace.js?v=4"></script>
+<script src="./workspace.js?v=5"></script>
 </body>
 </html>

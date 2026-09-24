@@ -15,9 +15,11 @@ function setTheme(choice){
     applyCanvasBg();
   }
   $('theme-menu').hidden=true;
+  $('theme-button').setAttribute('aria-expanded','false');
+  document.querySelectorAll('#theme-menu [data-theme-choice]').forEach(button=>button.setAttribute('aria-pressed',button.dataset.themeChoice===choice?'true':'false'));
   $('theme-button').title='Theme: '+effective;
 }
-function toggleThemeMenu(){$('theme-menu').hidden=!$('theme-menu').hidden;}
+function toggleThemeMenu(){const menu=$('theme-menu');menu.hidden=!menu.hidden;$('theme-button').setAttribute('aria-expanded',String(!menu.hidden));}
 function setCardDensity(choice){
   document.documentElement.dataset.density=choice;
   localStorage.setItem('ft_preview_density',choice);
@@ -278,12 +280,14 @@ function exportSVG(){
   document.querySelectorAll('.rail-btn').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
   $('person-search').addEventListener('input',updateSearch);
   $('person-search').addEventListener('keydown',e=>{if(e.key==='Enter')$('search-results').querySelector('button')?.click();});
+  document.addEventListener('click',e=>{if(!e.target.closest('.theme-switcher')){$('theme-menu').hidden=true;$('theme-button').setAttribute('aria-expanded','false');}});
   const wrap=$('cwrap');updateStage();
   wrap.addEventListener('wheel',e=>{e.preventDefault();const r=wrap.getBoundingClientRect();setZoom(view.zoom*(e.deltaY<0?1.12:1/1.12),e.clientX-r.left,e.clientY-r.top);}, {passive:false});
   wrap.addEventListener('mousedown',e=>{if(e.button===0&&(e.target===wrap||e.target===$('stage')||e.target===$('cinner')))view.pan={x:e.clientX,y:e.clientY,left:wrap.scrollLeft,top:wrap.scrollTop};});
   window.addEventListener('mousemove',e=>{if(!view.pan)return;wrap.classList.add('panning');wrap.scrollLeft=view.pan.left+view.pan.x-e.clientX;wrap.scrollTop=view.pan.top+view.pan.y-e.clientY;});
   window.addEventListener('mouseup',()=>{view.pan=null;wrap.classList.remove('panning');});
   document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!$('theme-menu').hidden){$('theme-menu').hidden=true;$('theme-button').setAttribute('aria-expanded','false');return;}
     if(e.target.closest('input,textarea,select')||document.querySelector('.mov.on'))return;
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();historyStep(e.shiftKey?1:-1);}
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();historyStep(1);}
