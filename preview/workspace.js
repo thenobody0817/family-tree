@@ -4,12 +4,25 @@ const view={zoom:1,selected:null,section:'tree',filter:'all',pan:null,history:[]
 const $=id=>document.getElementById(id);
 const personName=p=>[p.first_name,p.last_name].filter(Boolean).join(' ')||'Unnamed person';
 function setTheme(choice){
+  choice={light:'botanical',dark:'midnight'}[choice]||choice;
   localStorage.setItem('ft_preview_theme',choice);
-  const dark=choice==='dark'||(choice==='system'&&!!window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-  document.documentElement.dataset.theme=dark?'dark':'light';
+  const effective=choice==='system'?(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'midnight':'botanical'):choice;
+  document.documentElement.dataset.theme=effective;
   $('theme-choice').value=choice;
   const bg=$('canvas-bg');
-  if(['#f5f0e8','#f8faf6','#1c2521'].includes(bg.value)){bg.value=dark?'#1c2521':'#f8faf6';applyCanvasBg();}
+  if(['#f5f0e8','#f8faf6','#1c2521','#f7f3e9','#eef2f7'].includes(bg.value)){
+    bg.value={botanical:'#f8faf6',archive:'#f7f3e9',slate:'#eef2f7',midnight:'#1c2521'}[effective];
+    applyCanvasBg();
+  }
+  $('theme-menu').hidden=true;
+  $('theme-button').title='Theme: '+effective;
+}
+function toggleThemeMenu(){$('theme-menu').hidden=!$('theme-menu').hidden;}
+function setCardDensity(choice){
+  document.documentElement.dataset.density=choice;
+  localStorage.setItem('ft_preview_density',choice);
+  $('density-choice').value=choice;
+  refreshAllCards();draw();
 }
 const year=s=>String(s||'').match(/\d{4}$/)?.[0]||'';
 const lifespan=p=>[year(p.birth_date)||'?',year(p.death_date)].join('–');
@@ -167,7 +180,7 @@ function renderInspector(){
   const p=D.persons.get(view.selected);if(!p)return;
   const rel=relatives(p.id),detail=(label,v)=>v?`<p><b>${label}</b>${esc(v)}</p>`:'';
   const related=(label,ids)=>ids.length?`<div class="ins-section"><h3>${label}</h3>${ids.map(id=>{const person=D.persons.get(id);return person?`<button class="relation" onclick="selectPerson('${id}')">${esc(personName(person))} →</button>`:''}).join('')}</div>`:'';
-  $('inspector').innerHTML=`<button class="ins-close" onclick="selectPerson(null)" aria-label="Close details">×</button><div class="ins-avatar">${esc((p.first_name||p.last_name||'?')[0].toUpperCase())}</div><div class="inspector-name">${esc(personName(p))}</div><p class="inspector-life">${esc(lifespan(p))}</p><div class="inspector-actions"><button onclick="openEditPerson('${p.id}')">Edit details</button>${p.canvas_x==null?`<button onclick="placeAndSelect('${p.id}')">Place on tree</button>`:'<button onclick="focusPerson()">Focus family</button>'}</div><div class="ins-section"><h3>Life</h3>${detail('Birth', [p.birth_date,p.birth_place].filter(Boolean).join(' · '))}${detail('Death',[p.death_date,p.death_place].filter(Boolean).join(' · '))}${detail('Birth name',p.maiden_name)}${detail('Occupation',p.occupation)}${detail('Education',p.education)}${detail('Notes',p.notes)}</div>${related('Parents',rel.parents)}${related('Partners',rel.partners)}${related('Children',rel.children)}${related('Siblings',rel.siblings)}<div class="ins-section"><h3>Relationship lookup</h3><select class="relationship-select" aria-label="Compare person" onchange="showRelationship(this.value)"><option value="">Compare with…</option>${people().filter(other=>other.id!==p.id).map(other=>`<option value="${other.id}">${esc(personName(other))}</option>`).join('')}</select><p id="relationship-result"></p></div><div class="ins-section"><h3>Add relationship</h3><div class="inspector-actions"><button onclick="startCouple('${p.id}','married',event)">Spouse</button><button onclick="startCouple('${p.id}','unmarried',event)">Partner</button><button onclick="startSolo('${p.id}',event)">Child</button></div></div><div class="ins-section"><button onclick="deletePersonDirect('${p.id}')">Delete person</button></div>`;
+  $('inspector').innerHTML=`<button class="ins-close" onclick="selectPerson(null)" aria-label="Close details">×</button>${portraitMarkup(p,'ins-avatar')}<div class="inspector-name">${esc(personName(p))}</div><p class="inspector-life">${esc(lifespan(p))}</p><div class="inspector-actions"><button onclick="openEditPerson('${p.id}')">Edit details</button>${p.canvas_x==null?`<button onclick="placeAndSelect('${p.id}')">Place on tree</button>`:'<button onclick="focusPerson()">Focus family</button>'}</div><div class="ins-section"><h3>Life</h3>${detail('Birth', [p.birth_date,p.birth_place].filter(Boolean).join(' · '))}${detail('Death',[p.death_date,p.death_place].filter(Boolean).join(' · '))}${detail('Birth name',p.maiden_name)}${detail('Occupation',p.occupation)}${detail('Education',p.education)}${detail('Eye color',p.eye_color)}${detail('Hair color',p.hair_color)}${detail('Gender',p.gender)}${detail('Notes',p.notes)}</div>${related('Parents',rel.parents)}${related('Partners',rel.partners)}${related('Children',rel.children)}${related('Siblings',rel.siblings)}<div class="ins-section"><h3>Relationship lookup</h3><select class="relationship-select" aria-label="Compare person" onchange="showRelationship(this.value)"><option value="">Compare with…</option>${people().filter(other=>other.id!==p.id).map(other=>`<option value="${other.id}">${esc(personName(other))}</option>`).join('')}</select><p id="relationship-result"></p></div><div class="ins-section"><h3>Add relationship</h3><div class="inspector-actions"><button onclick="startCouple('${p.id}','married',event)">Spouse</button><button onclick="startCouple('${p.id}','unmarried',event)">Partner</button><button onclick="startSolo('${p.id}',event)">Child</button></div></div><div class="ins-section"><button onclick="deletePersonDirect('${p.id}')">Delete person</button></div>`;
 }
 function showView(section){
   view.section=section;
@@ -188,7 +201,7 @@ function renderPeople(){
   const all=people(),unplaced=all.filter(p=>p.canvas_x==null),incomplete=all.filter(p=>!p.birth_date||!p.birth_place);
   const filters=[['all','All',all.length],['unplaced','Unplaced',unplaced.length],['incomplete','Incomplete',incomplete.length]];
   const list=view.filter==='unplaced'?unplaced:view.filter==='incomplete'?incomplete:all;
-  $('content-body').innerHTML=`<div class="filter-row">${filters.map(([key,label,n])=>`<button class="${view.filter===key?'active':''}" onclick="view.filter='${key}';renderPeople()">${label} · ${n}</button>`).join('')}</div><div class="people-grid">${list.map(p=>`<button class="person-list-card" onclick="selectPerson('${p.id}')"><strong>${esc(personName(p))}</strong><span>${esc(lifespan(p))} ${p.canvas_x==null?'· Unplaced':''}</span><small>${esc(p.birth_place||p.occupation||'No place recorded')}</small></button>`).join('')}</div>${!list.length?'<p>No people in this view.</p>':''}`;
+  $('content-body').innerHTML=`<div class="filter-row">${filters.map(([key,label,n])=>`<button class="${view.filter===key?'active':''}" onclick="view.filter='${key}';renderPeople()">${label} · ${n}</button>`).join('')}</div><div class="people-grid">${list.map(p=>`<button class="person-list-card" onclick="selectPerson('${p.id}')">${portraitMarkup(p,'list-avatar')}<strong>${esc(personName(p))}</strong><span>${esc(lifespan(p))} ${p.canvas_x==null?'· Unplaced':''}</span><small>${esc(p.birth_place||p.occupation||'No place recorded')}</small></button>`).join('')}</div>${!list.length?'<p>No people in this view.</p>':''}`;
 }
 function renderTimeline(){
   const events=[];
@@ -258,6 +271,7 @@ function exportSVG(){
 }
 (function initWorkspace(){
   setTheme(localStorage.getItem('ft_preview_theme')||'system');
+  setCardDensity(localStorage.getItem('ft_preview_density')||'standard');
   document.querySelectorAll('.rail-btn').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
   $('person-search').addEventListener('input',updateSearch);
   $('person-search').addEventListener('keydown',e=>{if(e.key==='Enter')$('search-results').querySelector('button')?.click();});
