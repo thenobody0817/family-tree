@@ -36,7 +36,10 @@ moves data between the two modes.
 - **Research:** counts of missing dates and places, plus records to complete.
 - **Inspector:** click a person for details, immediate relatives, editing, and
   relationship lookup against another person.
-- **Settings:** storage mode, card attribute options, appearance, and interchange.
+- **Settings:** storage mode, card density and field options, four appearance
+  themes, and interchange. Detailed cards show whichever fields are enabled.
+- **Demo portraits:** the bundled fictional family uses generated mock portraits.
+  Other records retain initials; the portraits do not represent historical people.
 - **Export:** JSON, GEDCOM, SVG, PNG, and PDF. JSON remains the lossless native
   format; SVG exports vector cards and lines. GEDCOM supports names, sex,
   birth/death, occupation, notes, spouses, parent/child links, marriages,
@@ -50,6 +53,9 @@ before bulk edits in server mode.
 
 Keyboard: **F** search, **A** add person, **E** edit selection, **0** fit tree,
 **Ctrl/Cmd+Z** undo and **Ctrl/Cmd+Shift+Z** redo in Local mode.
+
+Relationship lines open their details when clicked. The previous floating date
+boxes were removed to keep the tree readable; dates remain in the editor.
 
 ## Run locally
 

@@ -173,12 +173,13 @@ input[type=number]:focus{border-color:var(--ac)}
 
     <hr class="sb-dv">
 
-    <div class="mf"><label for="theme-choice">Appearance</label><select id="theme-choice" onchange="setTheme(this.value)"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+    <div class="mf"><label for="theme-choice">Appearance</label><select id="theme-choice" onchange="setTheme(this.value)"><option value="system">System</option><option value="botanical">Botanical</option><option value="archive">Archive</option><option value="slate">Slate</option><option value="midnight">Midnight</option></select></div>
+    <div class="mf"><label for="density-choice">Card density</label><select id="density-choice" onchange="setCardDensity(this.value)"><option value="compact">Compact</option><option value="standard">Standard</option><option value="detailed">Detailed</option></select></div>
 
     <hr class="sb-dv">
 
     <!-- Attribute Toggles -->
-    <div class="sec-hdr open" onclick="toggleSec(this)"><span class="lbl">Card Attributes</span><span class="arr">▶</span></div>
+    <div class="sec-hdr open" onclick="toggleSec(this)"><span class="lbl">Detailed card fields</span><span class="arr">▶</span></div>
     <div class="sec-body" style="max-height:500px"><div id="attr-toggles"></div></div>
 
     <hr class="sb-dv">
@@ -248,7 +249,7 @@ input[type=number]:focus{border-color:var(--ac)}
   <header id="toolbar">
     <div class="brand"><strong>Family Tree</strong><span>Research workspace</span></div>
     <div class="search-box"><span aria-hidden="true">⌕</span><input id="person-search" type="search" placeholder="Find a person…" aria-label="Find a person" autocomplete="off"><div id="search-results" role="listbox"></div></div>
-    <div class="toolbar-actions"><button id="undo-btn" class="tool-btn" title="Undo" aria-label="Undo" onclick="historyStep(-1)">↶</button><button id="redo-btn" class="tool-btn" title="Redo" aria-label="Redo" onclick="historyStep(1)">↷</button><span id="toolbar-status">Connecting…</span><button class="primary-action" onclick="openAddPerson()">＋ Add person</button></div>
+    <div class="toolbar-actions"><button id="undo-btn" class="tool-btn" title="Undo" aria-label="Undo" onclick="historyStep(-1)">↶</button><button id="redo-btn" class="tool-btn" title="Redo" aria-label="Redo" onclick="historyStep(1)">↷</button><span id="toolbar-status">Connecting…</span><div class="theme-switcher"><button id="theme-button" class="tool-btn theme-button" onclick="toggleThemeMenu()" aria-label="Choose theme">◐ Theme</button><div id="theme-menu" hidden><button onclick="setTheme('botanical')"><i class="swatch botanical"></i>Botanical</button><button onclick="setTheme('archive')"><i class="swatch archive"></i>Archive</button><button onclick="setTheme('slate')"><i class="swatch slate"></i>Slate</button><button onclick="setTheme('midnight')"><i class="swatch midnight"></i>Midnight</button></div></div><button class="primary-action" onclick="openAddPerson()">＋ Add person</button></div>
   </header>
   <div id="cwrap">
     <div id="empty-state" hidden><div class="empty-icon">✦</div><h2>Every family has a story.</h2><p>Add the first person, or explore the workspace with a sample family.</p><div><button class="primary-action" onclick="openAddPerson()">Add first person</button><button id="empty-sample" class="tool-btn" onclick="loadSample()">Explore sample</button></div></div>
@@ -595,6 +596,10 @@ function draw() {
       fill:'none',stroke:'transparent','stroke-width':'16',cursor:'pointer'});
     hit.classList.add('hit');
     hit.addEventListener('click',()=>openCoupleModal(c.id));
+    const hint=svgN('title');
+    hint.textContent=[c.rel_type==='married'?'Marriage':'Partnership',c.start_date,c.start_place,
+      c.status==='divorced'?'Divorced':c.status==='widowed'?'Widowed':'',c.end_date].filter(Boolean).join(' · ');
+    hit.appendChild(hint);
     lsvg.appendChild(hit);
 
     // Visible line
@@ -609,16 +614,8 @@ function draw() {
     if(c.status==='divorced') drawX(lsvg,mx,my,'#dc2626',9);
     else if(c.status==='widowed') drawX(lsvg,mx,my,'#1c1c1c',9);
 
-    // Date label
-    if(c.start_date||(c.status!=='active'&&c.end_date)) {
-      const sym=c.rel_type==='married'?'⚭':'∞';
-      const lines=[];
-      if(c.start_date) lines.push({t:`${sym} ${c.start_date}`,col});
-      if(c.start_place) lines.push({t:`📍 ${c.start_place}`,col:'#888'});
-      if(c.status==='divorced'&&c.end_date) lines.push({t:`✕ div. ${c.end_date}`,col:'#dc2626'});
-      if(c.status==='widowed' &&c.end_date) lines.push({t:`✕ wid. ${c.end_date}`,col:'#444'});
-      drawLabel(lsvg,mx,my,lines,col);
-    }
+    // A small junction preserves the relationship target without covering cards.
+    lsvg.appendChild(svgN('circle',{cx:mx,cy:my,r:3,fill:col,'pointer-events':'none'}));
   }
 
   // ── 2. Child lines from couple midpoints (junction style) ──
@@ -674,20 +671,6 @@ function drawX(svg,mx,my,col,s) {
   svg.appendChild(svgN('line',{x1:mx+s,y1:my-s,x2:mx-s,y2:my+s,stroke:col,'stroke-width':'3','pointer-events':'none','stroke-linecap':'round'}));
 }
 
-function drawLabel(svg,mx,my,lines,borderCol) {
-  if(!lines.length) return;
-  const LH=15,PX=8,PY=4;
-  const bW=Math.max(Math.max(...lines.map(l=>l.t.length))*6.4+PX*2,60);
-  const bH=lines.length*LH+PY*2;
-  svg.appendChild(svgN('rect',{x:mx-bW/2,y:my-bH/2,width:bW,height:bH,
-    fill:'rgba(255,255,255,.94)',rx:'5',stroke:borderCol,'stroke-width':'1','pointer-events':'none'}));
-  lines.forEach((ln,i)=>{
-    const t=svgN('text',{x:mx,y:my-bH/2+PY+LH*(i+0.75),'text-anchor':'middle',
-      'font-family':'Nunito,sans-serif','font-size':'11','fill':ln.col,'pointer-events':'none'});
-    t.textContent=ln.t; svg.appendChild(t);
-  });
-}
-
 // ═══════════════════════════════════════════════════════
 //  GENERATION GRID
 // ═══════════════════════════════════════════════════════
@@ -740,14 +723,30 @@ function mountCard(p){
   document.getElementById('cinner').appendChild(div);
 }
 
+// Fictional portraits belong only to the bundled sample IDs. Real records
+// retain initials; no portrait is inferred from name or gender.
+const DEMO_PORTRAITS={1:0,2:1,3:2,4:3,5:6,6:5,7:8,8:9,9:12,10:11,11:16,12:13,13:24,14:18,15:17,16:19,17:14,18:21,19:22,20:23,21:'marta',22:20};
+function portraitMarkup(p,kind='avatar'){
+  const initial=esc((p.first_name||p.last_name||'?').charAt(0).toUpperCase());
+  const num=Number(p.id.slice(-3));
+  if(p.id!==`00000000-0000-4000-8000-${String(num).padStart(12,'0')}`||!(num in DEMO_PORTRAITS))
+    return `<span class="${kind}">${initial}</span>`;
+  const slot=DEMO_PORTRAITS[num];
+  if(slot==='marta')return `<span class="${kind} portrait-marta" role="img" aria-label="Fictional portrait"></span>`;
+  return `<span class="${kind} portrait-sprite" style="background-position:${(slot%5)*25}% ${Math.floor(slot/5)*25}%" role="img" aria-label="Fictional portrait"></span>`;
+}
+
 function buildCard(p){
   const fn=[p.first_name,p.last_name].filter(Boolean).join(' ')||'(unnamed)';
   const years=[p.birth_date,p.death_date].map(d=>d?.match(/\d{4}$/)?.[0]||'');
   const summary=years.some(Boolean)?`${years[0]||'?'}–${years[1]||''}`:'Dates unknown';
   const secondary=p.birth_place||p.occupation||'';
+  const details=ATTR_DEFS.filter(a=>attrs[a.key]&&p[a.key]).map(a=>
+    `<div class="pc-detail"><span>${esc(a.label)}</span><b>${esc(p[a.key])}</b></div>`).join('');
   return `
-    <div class="pc-top"><div class="avatar">${esc((p.first_name||p.last_name||'?').charAt(0).toUpperCase())}</div><div class="pc-text"><div class="pc-name">${esc(fn)}</div><div class="pc-lifespan">${esc(summary)}</div></div><button class="card-more" title="Open details" aria-label="Open details for ${esc(fn)}" onclick="selectPerson('${p.id}')">⋯</button></div>
-    ${secondary?`<div class="pc-secondary">${esc(secondary)}</div>`:''}`;
+    <div class="pc-top">${portraitMarkup(p)}<div class="pc-text"><div class="pc-name">${esc(fn)}</div><div class="pc-lifespan">${esc(summary)}</div></div><button class="card-more" title="Open details" aria-label="Open details for ${esc(fn)}" onclick="selectPerson('${p.id}')">⋯</button></div>
+    ${secondary?`<div class="pc-secondary">${esc(secondary)}</div>`:''}
+    ${details?`<div class="pc-details">${details}</div>`:''}`;
 }
 
 function refreshCard(id){
@@ -1081,6 +1080,7 @@ function initAttrs(){
 }
 function toggleAttr(key,val){
   attrs[key]=val;localStorage.setItem(ATTR_KEY,JSON.stringify(attrs));
+  if(document.documentElement.dataset.density!=='detailed')setCardDensity('detailed');
   refreshAllCards();draw();
 }
 

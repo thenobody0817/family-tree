@@ -70,6 +70,33 @@ PEOPLE = [
      None, None, None, None, "Iespējams, Kārļa brālēns — jāpārbauda.", None, None),
 ]
 
+# Extra fictional research details for the sample. Death and maiden-name fields
+# remain empty when they do not apply.
+BIO = {
+    1: dict(eye_color="brūnas", hair_color="tumši brūni", notes="Pārdaugavas saimnieks; saglabājušās saimniecības piezīmes."),
+    2: dict(education="Rīgas mājturības kursi", hair_color="gaiši brūni", notes="Vadīja mājsaimniecību un pierakstīja ģimenes receptes."),
+    3: dict(education="Cēsu ģimnāzija", eye_color="pelēkas", hair_color="sirmi", notes="Strādāja Kalna muižas mežniecībā."),
+    4: dict(eye_color="zaļas", hair_color="tumši brūni", notes="Mācīja latviešu valodu Cēsu apkārtnē."),
+    5: dict(education="Rīgas Politehniskais institūts", hair_color="sirmi", notes="Projektēja tiltus un saglabāja skiču albumu."),
+    6: dict(eye_color="brūnas", hair_color="gaiši brūni", notes="Mācīja sākumskolā; pārcēlās uz Rīgu pēc laulībām."),
+    7: dict(education="Liepājas arodskola", eye_color="zilas", hair_color="tumši", notes="Strādāja zvejas ostā un glabāja kuģu fotogrāfijas."),
+    8: dict(education="Liepājas amatniecības kursi", hair_color="sirmi", notes="Šuva apģērbu ģimenei un kaimiņiem."),
+    9: dict(eye_color="brūnas", hair_color="tumši", notes="Piedalījās agrīnu datorprogrammu ieviešanā Rīgā."),
+    10: dict(eye_color="zaļas", hair_color="gaiši brūni", notes="Strādāja ģimenes ārstes praksē."),
+    11: dict(eye_color="pelēkas", hair_color="tumši", notes="Projektēja dzīvojamās ēkas un glabāja rasējumus."),
+    12: dict(education="Rīgas finanšu tehnikums", eye_color="zilas", hair_color="brūni", notes="Veda grāmatvedību; ģimenei saglabātas vēstules."),
+    13: dict(eye_color="brūnas", hair_color="tumši", notes="Māca klavierspēli; Lailu audzināja viena."),
+    14: dict(eye_color="zilas", hair_color="brūni", notes="Projektē publiskās ēkas un interesējas par ģimenes vēsturi."),
+    15: dict(eye_color="zaļas", hair_color="gaiši", notes="Raksta par kultūru un glabā interviju ierakstus."),
+    16: dict(eye_color="brūnas", hair_color="tumši brūni", notes="Pēta piekrastes augus un veido lauka piezīmes."),
+    17: dict(education="Rīgas Doma kora skola", eye_color="pelēkas", hair_color="tumši", notes="Ieraksta mūziku un digitalizē vecās ģimenes lentes."),
+    18: dict(eye_color="zilas", hair_color="gaiši brūni", notes="Strādā vides izglītības projektos."),
+    19: dict(eye_color="brūnas", hair_color="tumši", notes="Analizē ekonomikas datus; dzīvo Rīgā."),
+    20: dict(education="Latvijas Mākslas akadēmija", eye_color="zaļas", hair_color="rudi", notes="Veido grāmatu dizainu un ģimenes fotogrāfiju albumus."),
+    21: dict(education="Rīgas vidusskola", eye_color="zilas", hair_color="gaiši brūni", notes="Mācās vidusskolā; interesējas par zīmēšanu."),
+    22: dict(occupation="Dzelzceļa darbinieks", education="Rīgas arodskola", eye_color="pelēkas", hair_color="sirmi", death_date="2015", death_place="Rīga", notes="Iespējams, Kārļa brālēns; radniecības saite vēl jāpārbauda."),
+}
+
 # id, p1, p2, rel_type, start_date, start_place, status, end_date, end_place
 COUPLES = [
     (1, 1, 2, "married", "1922", "Rīga", "active", None, None),
@@ -97,7 +124,7 @@ COUPLE_LINE_COLORS = ["#2563eb", "#1d4ed8", "#3b82f6", "#1e40af", "#60a5fa", "#1
 
 def person_row(p):
     (n, fn, ln, mn, g, bd, bp, dd, dp, occ, edu, eye, hair, notes, x, y) = p
-    return {
+    row = {
         "id": uid(n), "first_name": fn, "last_name": ln, "maiden_name": mn,
         "gender": g, "birth_date": bd, "birth_place": bp,
         "death_date": dd, "death_place": dp,
@@ -105,6 +132,8 @@ def person_row(p):
         "eye_color": eye, "hair_color": hair, "notes": notes,
         "canvas_x": x, "canvas_y": y,
     }
+    row.update(BIO.get(n, {}))
+    return row
 
 
 def couple_row(c):
