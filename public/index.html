@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Family Tree Research</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -141,13 +142,22 @@ input[type=number]:focus{border-color:var(--ac)}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,.9);color:#f5f5f5;padding:9px 24px;border-radius:24px;font-size:13px;font-weight:600;pointer-events:none;opacity:0;transition:opacity .3s;z-index:800}
 #toast.on{opacity:1}
 </style>
+<link href="./workspace.css?v=5" rel="stylesheet">
 </head>
 <body>
+<nav id="rail" aria-label="Main navigation">
+  <div class="rail-mark" title="Family Tree">✦</div>
+  <button class="rail-btn active" data-view="tree" title="Tree" aria-label="Tree">♧<span>Tree</span></button>
+  <button class="rail-btn" data-view="people" title="People" aria-label="People">☷<span>People</span></button>
+  <button class="rail-btn" data-view="timeline" title="Timeline" aria-label="Timeline">◷<span>Timeline</span></button>
+  <button class="rail-btn" data-view="research" title="Research" aria-label="Research">◇<span>Research</span></button>
+  <button class="rail-btn rail-settings" data-view="settings" title="Settings" aria-label="Settings">⚙<span>Settings</span></button>
+</nav>
 
 <!-- ══ SIDEBAR ══ -->
 <div id="sidebar">
   <div class="sbh">
-    <h1>🌳 Family Tree Research</h1>
+    <h1>Workspace settings</h1>
     <div class="sub">MariaDB · PHP · Live sync</div>
     <div class="conn-status">
       <div class="conn-dot" id="conn-dot"></div>
@@ -163,8 +173,14 @@ input[type=number]:focus{border-color:var(--ac)}
 
     <hr class="sb-dv">
 
+    <div class="mf"><label for="theme-choice">Appearance</label><select id="theme-choice" onchange="setTheme(this.value)"><option value="system">System</option><option value="botanical">Botanical</option><option value="archive">Archive</option><option value="slate">Slate</option><option value="midnight">Midnight</option></select></div>
+    <div class="mf"><label for="density-choice">Card density</label><select id="density-choice" onchange="setCardDensity(this.value)"><option value="compact">Compact</option><option value="standard">Standard</option><option value="detailed">Detailed</option></select></div>
+    <div class="mf-hint" style="margin-top:-8px;margin-bottom:12px">Detailed card fields appear in Detailed mode. Changing a field switches to that mode.</div>
+
+    <hr class="sb-dv">
+
     <!-- Attribute Toggles -->
-    <div class="sec-hdr open" onclick="toggleSec(this)"><span class="lbl">Card Attributes</span><span class="arr">▶</span></div>
+    <div class="sec-hdr open" onclick="toggleSec(this)"><span class="lbl">Detailed card fields</span><span class="arr">▶</span></div>
     <div class="sec-body" style="max-height:500px"><div id="attr-toggles"></div></div>
 
     <hr class="sb-dv">
@@ -189,11 +205,11 @@ input[type=number]:focus{border-color:var(--ac)}
         <span class="rlbl">Canvas background</span>
         <input type="color" id="canvas-bg" value="#f5f0e8" oninput="applyCanvasBg()">
       </div>
-      <div class="row">
+      <div class="row advanced-size">
         <span class="rlbl">Canvas width (px)</span>
         <input type="number" id="cw" value="3000" min="1000" max="10000" step="200" onchange="applyCanvasSize()">
       </div>
-      <div class="row">
+      <div class="row advanced-size">
         <span class="rlbl">Canvas height (px)</span>
         <input type="number" id="ch" value="2200" min="800" max="10000" step="200" onchange="applyCanvasSize()">
       </div>
@@ -223,7 +239,7 @@ input[type=number]:focus{border-color:var(--ac)}
       </div>
       <div class="mf-hint" style="padding:2px 2px 8px">JSON is the interchange format: export from the server and import into the local app (or vice-versa).</div>
       <button class="bexp eimp" id="btn-sample" style="display:none;width:100%;margin-bottom:8px" onclick="loadSample()">🌱 Load sample family</button>
-      <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="onImportFile(event)">
+      <input type="file" id="import-file" accept="application/json,.json,.ged,.gedcom,text/plain" style="display:none" onchange="onImportFile(event)">
     </div>
 
   </div>
@@ -231,12 +247,22 @@ input[type=number]:focus{border-color:var(--ac)}
 
 <!-- ══ CANVAS ══ -->
 <div id="main">
+  <header id="toolbar">
+    <div class="brand"><strong>Family Tree</strong><span>Research workspace</span></div>
+    <div class="search-box"><span aria-hidden="true">⌕</span><input id="person-search" type="search" placeholder="Find a person…" aria-label="Find a person" autocomplete="off"><div id="search-results" role="listbox"></div></div>
+    <div class="toolbar-actions"><button id="undo-btn" class="tool-btn" title="Undo" aria-label="Undo" onclick="historyStep(-1)">↶</button><button id="redo-btn" class="tool-btn" title="Redo" aria-label="Redo" onclick="historyStep(1)">↷</button><span id="toolbar-status">Connecting…</span><div class="theme-switcher"><button id="theme-button" class="tool-btn theme-button" onclick="toggleThemeMenu()" aria-label="Choose theme" aria-expanded="false">◐ Theme</button><div id="theme-menu" hidden><button data-theme-choice="system" onclick="setTheme('system')"><i class="swatch system"></i>System</button><button data-theme-choice="botanical" onclick="setTheme('botanical')"><i class="swatch botanical"></i>Botanical</button><button data-theme-choice="archive" onclick="setTheme('archive')"><i class="swatch archive"></i>Archive</button><button data-theme-choice="slate" onclick="setTheme('slate')"><i class="swatch slate"></i>Slate</button><button data-theme-choice="midnight" onclick="setTheme('midnight')"><i class="swatch midnight"></i>Midnight</button></div></div><button class="primary-action" onclick="openAddPerson()">＋ Add person</button></div>
+  </header>
   <div id="cwrap">
-    <div id="cinner">
-      <svg id="gen-svg"></svg>
-      <svg id="lsvg"></svg>
-    </div>
+    <div id="empty-state" hidden><div class="empty-icon">✦</div><h2>Every family has a story.</h2><p>Add the first person, or explore the workspace with a sample family.</p><div><button class="primary-action" onclick="openAddPerson()">Add first person</button><button id="empty-sample" class="tool-btn" onclick="loadSample()">Explore sample</button></div></div>
+    <div id="stage"><div id="cinner">
+      <svg id="gen-svg"></svg><svg id="lsvg"></svg>
+    </div></div>
+    <div id="canvas-hint">Drag the canvas to move · Select a person to inspect</div>
+    <div id="zoom-controls"><button onclick="setZoom(view.zoom/1.2)" aria-label="Zoom out">−</button><span id="zoom-readout">100%</span><button onclick="setZoom(view.zoom*1.2)" aria-label="Zoom in">＋</button><button onclick="fitTree()">Fit tree</button><button onclick="arrangeTree()" title="Save automatic positions">Arrange</button></div>
   </div>
+  <section id="content-panel" hidden><div class="content-head"><div><span class="eyebrow" id="view-eyebrow">DIRECTORY</span><h2 id="view-title">People</h2></div><button class="tool-btn" onclick="showView('tree')" aria-label="Close panel">×</button></div><div id="content-body"></div></section>
+</div>
+<aside id="inspector" hidden aria-label="Person details"></aside>
 </div>
 
 <!-- ══ BANNER & TOAST ══ -->
@@ -493,7 +519,7 @@ function applySnapshot(data, full=false) {
       // Never refresh a card the user is actively dragging, and only
       // re-render when the server row actually changed.
       else if (!(UI.dragging && UI.dragging.id === p.id)
-               && (!prev || prev.updated_at !== p.updated_at)) {
+               && (!prev || JSON.stringify(prev)!==JSON.stringify(p))) {
         refreshCard(p.id);
       }
     } else if (el) {
@@ -513,6 +539,7 @@ function applySnapshot(data, full=false) {
 
   draw();
   renderUnassigned();
+  if(window.refreshWorkspace) refreshWorkspace();
 }
 
 function startPolling() {
@@ -570,6 +597,10 @@ function draw() {
       fill:'none',stroke:'transparent','stroke-width':'16',cursor:'pointer'});
     hit.classList.add('hit');
     hit.addEventListener('click',()=>openCoupleModal(c.id));
+    const hint=svgN('title');
+    hint.textContent=[c.rel_type==='married'?'Marriage':'Partnership',c.start_date,c.start_place,
+      c.status==='divorced'?'Divorced':c.status==='widowed'?'Widowed':'',c.end_date].filter(Boolean).join(' · ');
+    hit.appendChild(hint);
     lsvg.appendChild(hit);
 
     // Visible line
@@ -584,16 +615,8 @@ function draw() {
     if(c.status==='divorced') drawX(lsvg,mx,my,'#dc2626',9);
     else if(c.status==='widowed') drawX(lsvg,mx,my,'#1c1c1c',9);
 
-    // Date label
-    if(c.start_date||(c.status!=='active'&&c.end_date)) {
-      const sym=c.rel_type==='married'?'⚭':'∞';
-      const lines=[];
-      if(c.start_date) lines.push({t:`${sym} ${c.start_date}`,col});
-      if(c.start_place) lines.push({t:`📍 ${c.start_place}`,col:'#888'});
-      if(c.status==='divorced'&&c.end_date) lines.push({t:`✕ div. ${c.end_date}`,col:'#dc2626'});
-      if(c.status==='widowed' &&c.end_date) lines.push({t:`✕ wid. ${c.end_date}`,col:'#444'});
-      drawLabel(lsvg,mx,my,lines,col);
-    }
+    // A small junction preserves the relationship target without covering cards.
+    lsvg.appendChild(svgN('circle',{cx:mx,cy:my,r:3,fill:col,'pointer-events':'none'}));
   }
 
   // ── 2. Child lines from couple midpoints (junction style) ──
@@ -649,20 +672,6 @@ function drawX(svg,mx,my,col,s) {
   svg.appendChild(svgN('line',{x1:mx+s,y1:my-s,x2:mx-s,y2:my+s,stroke:col,'stroke-width':'3','pointer-events':'none','stroke-linecap':'round'}));
 }
 
-function drawLabel(svg,mx,my,lines,borderCol) {
-  if(!lines.length) return;
-  const LH=15,PX=8,PY=4;
-  const bW=Math.max(Math.max(...lines.map(l=>l.t.length))*6.4+PX*2,60);
-  const bH=lines.length*LH+PY*2;
-  svg.appendChild(svgN('rect',{x:mx-bW/2,y:my-bH/2,width:bW,height:bH,
-    fill:'rgba(255,255,255,.94)',rx:'5',stroke:borderCol,'stroke-width':'1','pointer-events':'none'}));
-  lines.forEach((ln,i)=>{
-    const t=svgN('text',{x:mx,y:my-bH/2+PY+LH*(i+0.75),'text-anchor':'middle',
-      'font-family':'Nunito,sans-serif','font-size':'11','fill':ln.col,'pointer-events':'none'});
-    t.textContent=ln.t; svg.appendChild(t);
-  });
-}
-
 // ═══════════════════════════════════════════════════════
 //  GENERATION GRID
 // ═══════════════════════════════════════════════════════
@@ -701,7 +710,7 @@ function mountCard(p){
     e.preventDefault();
     const cw=document.getElementById('cwrap'),wr=cw.getBoundingClientRect();
     UI.dragging={id:p.id,
-      sx:e.clientX-wr.left+cw.scrollLeft,sy:e.clientY-wr.top+cw.scrollTop,
+      sx:(e.clientX-wr.left+cw.scrollLeft)/view.zoom,sy:(e.clientY-wr.top+cw.scrollTop)/view.zoom,
       ox:p.canvas_x,oy:p.canvas_y};
     div.classList.add('dragging');
   });
@@ -709,51 +718,42 @@ function mountCard(p){
     if(e.target.tagName==='BUTTON')return;
     if(UI.connectMode==='child'){finishAddChild(p.id);return;}
     if(UI.connectMode&&UI.connectFrom!==p.id)finishConnect(p.id);
+    else if(!UI.connectMode) selectPerson(p.id);
   });
   div.addEventListener('dblclick',e=>{if(e.target.tagName!=='BUTTON')openEditPerson(p.id);});
   document.getElementById('cinner').appendChild(div);
 }
 
+// Fictional portraits belong only to the bundled sample IDs. Real records
+// retain initials; no portrait is inferred from name or gender.
+const DEMO_PORTRAITS={1:0,2:1,3:2,4:3,5:6,6:5,7:8,8:9,9:12,10:11,11:16,12:13,13:24,14:18,15:17,16:19,17:14,18:21,19:22,20:23,21:'marta',22:20};
+function portraitMarkup(p,kind='avatar'){
+  const initial=esc((p.first_name||p.last_name||'?').charAt(0).toUpperCase());
+  const num=Number(p.id.slice(-3));
+  if(p.id!==`00000000-0000-4000-8000-${String(num).padStart(12,'0')}`||!(num in DEMO_PORTRAITS))
+    return `<span class="${kind}">${initial}</span>`;
+  const slot=DEMO_PORTRAITS[num];
+  if(slot==='marta')return `<span class="${kind} portrait-marta" role="img" aria-label="Fictional portrait"></span>`;
+  return `<span class="${kind} portrait-sprite" style="background-position:${(slot%5)*25}% ${Math.floor(slot/5)*25}%" role="img" aria-label="Fictional portrait"></span>`;
+}
+
 function buildCard(p){
   const fn=[p.first_name,p.last_name].filter(Boolean).join(' ')||'(unnamed)';
-  let rows='';
-  if(attrs.maiden_name&&p.maiden_name)
-    rows+=`<div class="pc-maiden">(${esc(p.maiden_name)})</div>`;
-  // Birth/death combined row
-  const sb=attrs.birth_date&&p.birth_date,sd=attrs.death_date&&p.death_date;
-  if(sb||sd){
-    const b=sb?boldY(p.birth_date):'',d=sd?boldY(p.death_date):'';
-    rows+=`<div class="pc-attr"><span class="ai">🗓</span><span class="av">${b}${sb&&sd?' — ':''}${d}</span></div>`;
-  }
-  const attrMap=[
-    ['birth_place','📍',p.birth_place],['death_place','📍✝',p.death_place],
-    ['occupation','💼',p.occupation],['education','🎓',p.education],
-    ['eye_color','👁',p.eye_color],['hair_color','💇',p.hair_color],
-    ['notes','📝',p.notes?p.notes.slice(0,80)+(p.notes.length>80?'…':''):null],
-  ];
-  attrMap.forEach(([k,ico,v])=>{
-    if(attrs[k]&&v) rows+=`<div class="pc-attr"><span class="ai">${ico}</span><span class="av" style="${k==='notes'?'font-size:11px;color:#888':''}">${esc(v)}</span></div>`;
-  });
-  if(attrs.gender&&p.gender){
-    const gl={male:'♂ Male',female:'♀ Female',other:'⚧ Other'}[p.gender]||'';
-    rows+=`<div class="pc-attr"><span class="av" style="color:${gCol(p.gender)}">${gl}</span></div>`;
-  }
+  const years=[p.birth_date,p.death_date].map(d=>d?.match(/\d{4}$/)?.[0]||'');
+  const summary=years.some(Boolean)?`${years[0]||'?'}–${years[1]||''}`:'Dates unknown';
+  const secondary=p.birth_place||p.occupation||'';
+  const details=ATTR_DEFS.filter(a=>attrs[a.key]&&p[a.key]).map(a=>
+    `<div class="pc-detail"><span>${esc(a.label)}</span><b>${esc(p[a.key])}</b></div>`).join('');
   return `
-    <div class="pc-top"><div class="pc-name">${esc(fn)}</div></div>
-    ${rows?`<div class="pc-attrs">${rows}</div>`:''}
-    <div class="pc-acts">
-      <button class="pcb pcb-wed" title="Link: Married"   onclick="startCouple('${p.id}','married',event)">💍</button>
-      <button class="pcb pcb-unw" title="Link: Partners"  onclick="startCouple('${p.id}','unmarried',event)">🤝</button>
-      <button class="pcb pcb-par" title="Solo parent"     onclick="startSolo('${p.id}',event)">👪</button>
-      <button class="pcb"         title="Edit"            onclick="openEditPerson('${p.id}')">✏️</button>
-      <button class="pcb pcb-del" title="Delete"          onclick="deletePersonDirect('${p.id}')">🗑</button>
-    </div>`;
+    <div class="pc-top">${portraitMarkup(p)}<div class="pc-text"><div class="pc-name">${esc(fn)}</div><div class="pc-lifespan">${esc(summary)}</div></div><button class="card-more" title="Open details" aria-label="Open details for ${esc(fn)}" onclick="selectPerson('${p.id}')">⋯</button></div>
+    ${secondary?`<div class="pc-secondary">${esc(secondary)}</div>`:''}
+    ${details?`<div class="pc-details">${details}</div>`:''}`;
 }
 
 function refreshCard(id){
   const p=D.persons.get(id);if(!p)return;
   const el=document.getElementById('pc-'+id);if(!el)return;
-  el.style.borderLeftColor=gCol(p.gender);
+  el.style.borderLeftColor='var(--ac)';
   el.style.left=(p.canvas_x||0)+'px';el.style.top=(p.canvas_y||0)+'px';
   el.innerHTML=buildCard(p);
 }
@@ -773,7 +773,7 @@ function boldY(d){
 document.addEventListener('mousemove',e=>{
   if(!UI.dragging)return;
   const cw=document.getElementById('cwrap'),wr=cw.getBoundingClientRect();
-  const mx=e.clientX-wr.left+cw.scrollLeft,my=e.clientY-wr.top+cw.scrollTop;
+  const mx=(e.clientX-wr.left+cw.scrollLeft)/view.zoom,my=(e.clientY-wr.top+cw.scrollTop)/view.zoom;
   const p=D.persons.get(UI.dragging.id);if(!p)return;
   p.canvas_x=Math.max(0,UI.dragging.ox+(mx-UI.dragging.sx));
   p.canvas_y=snapY(Math.max(0,UI.dragging.oy+(my-UI.dragging.sy)));
@@ -784,13 +784,14 @@ document.addEventListener('mousemove',e=>{
 document.addEventListener('mouseup',()=>{
   if(!UI.dragging)return;
   const id=UI.dragging.id;
+  const before=UI.dragging;
   document.getElementById('pc-'+id)?.classList.remove('dragging');
   const p=D.persons.get(id);
   UI.dragging=null;
-  if(p){
+  if(p&&(p.canvas_x!==before.ox||p.canvas_y!==before.oy)){
     clearTimeout(UI.posDebounce[id]);
     UI.posDebounce[id]=setTimeout(()=>{
-      api('persons','PUT',{canvas_x:p.canvas_x,canvas_y:p.canvas_y},id).catch(()=>{});
+      api('persons','PUT',{canvas_x:p.canvas_x,canvas_y:p.canvas_y},id).catch(e=>showToast('Position not saved: '+e.message));
     },700);
   }
 });
@@ -920,6 +921,13 @@ async function savePerson(){
   };
   for(const dk of['birth_date','death_date'])
     if(data[dk]&&!validDate(data[dk])){showToast('Date format: YYYY, MM/YYYY or DD/MM/YYYY');return;}
+  if(!UI.editPersonId){
+    const norm=s=>String(s||'').trim().toLocaleLowerCase();
+    const duplicate=[...D.persons.values()].find(p=>norm(p.first_name)===norm(data.first_name)&&norm(p.last_name)===norm(data.last_name)&&
+      ((p.birth_date&&data.birth_date&&norm(p.birth_date)===norm(data.birth_date))||
+       (!p.birth_date&&!data.birth_date&&norm(p.birth_place)===norm(data.birth_place))));
+    if(duplicate&&!confirm(`${personName(duplicate)} may already exist. Create another record?`))return;
+  }
   try{
     if(UI.editPersonId){
       await api('persons','PUT',data,UI.editPersonId);
@@ -927,12 +935,13 @@ async function savePerson(){
       refreshCard(UI.editPersonId);draw();showToast('Updated ✓');
     }else{
       const cw=document.getElementById('cwrap');
-      data.canvas_x=cw.scrollLeft+cw.clientWidth/2-90;
-      data.canvas_y=snapY(cw.scrollTop+cw.clientHeight/2-60);
+      data.canvas_x=(cw.scrollLeft+cw.clientWidth/2)/view.zoom-90;
+      data.canvas_y=snapY((cw.scrollTop+cw.clientHeight/2)/view.zoom-60);
       const row=await api('persons','POST',data);
       D.persons.set(row.id,row);mountCard(row);draw();showToast('Person added ✓');
     }
     closeModal('pmov');
+    recordHistory();refreshWorkspace();
   }catch(er){showToast('Error: '+er.message);}
 }
 
@@ -943,7 +952,7 @@ async function deletePersonDirect(id){
     await api('persons','DELETE',null,id);
     D.persons.delete(id);
     const el=document.getElementById('pc-'+id);if(el)el.remove();
-    draw();renderUnassigned();showToast('Deleted');
+    draw();renderUnassigned();selectPerson(null);recordHistory();refreshWorkspace();showToast('Deleted');
   }catch(er){showToast('Error: '+er.message);}
 }
 function deletePersonModal(){if(UI.editPersonId){closeModal('pmov');deletePersonDirect(UI.editPersonId);}}
@@ -1046,12 +1055,12 @@ function renderUnassigned(){
 }
 async function placeOnCanvas(id){
   const cw=document.getElementById('cwrap');
-  const cx=cw.scrollLeft+cw.clientWidth/2-90+Math.random()*60-30;
-  const cy=snapY(cw.scrollTop+cw.clientHeight/2-60+Math.random()*40-20);
+  const cx=(cw.scrollLeft+cw.clientWidth/2)/view.zoom-90+Math.random()*60-30;
+  const cy=snapY((cw.scrollTop+cw.clientHeight/2)/view.zoom-60+Math.random()*40-20);
   try{
     await api('persons','PUT',{canvas_x:cx,canvas_y:cy},id);
     const p=D.persons.get(id);p.canvas_x=cx;p.canvas_y=cy;
-    mountCard(p);draw();renderUnassigned();
+    mountCard(p);draw();renderUnassigned();recordHistory();refreshWorkspace();
   }catch(er){showToast('Error: '+er.message);}
 }
 
@@ -1072,6 +1081,7 @@ function initAttrs(){
 }
 function toggleAttr(key,val){
   attrs[key]=val;localStorage.setItem(ATTR_KEY,JSON.stringify(attrs));
+  if(document.documentElement.dataset.density!=='detailed')setCardDensity('detailed');
   refreshAllCards();draw();
 }
 
@@ -1127,7 +1137,7 @@ async function saveConfig(){
   localStorage.setItem(CONF_KEY,JSON.stringify(CFG));
   setConn('wait','Connecting…');
   const ok=await loadAll();
-  if(ok){closeModal('setup-ov');startPolling();}
+  if(ok){closeModal('setup-ov');if(CFG.mode==='server')startPolling();else clearInterval(UI.pollTimer);updateHistoryButtons();}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1138,9 +1148,9 @@ document.addEventListener('keydown',e=>{
     const open=document.querySelector('.mov.on');
     if(open)open.classList.remove('on');else cancelConnect();
   }
-  if(e.key==='Enter'&&!e.shiftKey){
-    if(document.getElementById('pmov').classList.contains('on'))savePerson();
-    if(document.getElementById('setup-ov').classList.contains('on'))saveConfig();
+  if(e.key==='Enter'&&!e.shiftKey&&e.target.matches('input:not([type=checkbox]):not([type=color]):not([type=file])')){
+    if(document.getElementById('pmov').classList.contains('on')){e.preventDefault();savePerson();}
+    if(document.getElementById('setup-ov').classList.contains('on')){e.preventDefault();saveConfig();}
   }
 });
 
@@ -1274,15 +1284,18 @@ async function onImportFile(ev){
   ev.target.value='';
   if(!file) return;
   let payload;
-  try{ payload=JSON.parse(await file.text()); }
-  catch{ showToast('Not valid JSON'); return; }
+  try{
+    const raw=await file.text();
+    payload=/\.(ged|gedcom)$/i.test(file.name)||/^0 HEAD\b/m.test(raw)?parseGEDCOM(raw):JSON.parse(raw);
+  }
+  catch(e){ showToast('Import failed: '+e.message); return; }
   if(!payload || !Array.isArray(payload.persons)){ showToast('Not a family-tree export file'); return; }
   if(!confirm('Replace ALL current data with '+payload.persons.length+' people from this file?')) return;
   try{
     await api('import','POST',{
       persons:payload.persons, couples:payload.couples||[], parent_child:payload.parent_child||[]
     });
-    await loadAll(); startPolling();
+    await loadAll(); if(CFG.mode==='server')startPolling();
     showToast('Imported '+payload.persons.length+' people ✓');
   }catch(e){ showToast('Import failed: '+e.message); }
 }
@@ -1296,7 +1309,7 @@ async function loadSample(){
     await api('import','POST',{
       persons:payload.persons, couples:payload.couples||[], parent_child:payload.parent_child||[]
     });
-    await loadAll(); startPolling();
+    await loadAll(); if(CFG.mode==='server')startPolling();
     showToast('Sample family loaded ✓');
   }catch(e){ showToast('Sample load failed: '+e.message); }
 }
@@ -1315,6 +1328,7 @@ function validDate(v){return/^\d{4}$/.test(v)||/^\d{1,2}\/\d{4}$/.test(v)||/^\d{
 function setConn(st,txt){
   document.getElementById('conn-dot').className='conn-dot '+st;
   document.getElementById('conn-lbl').textContent=txt;
+  const label=document.getElementById('toolbar-status');if(label)label.textContent=st==='ok'?'● '+(CFG.mode==='local'?'Local':'Saved'):st==='err'?'● Offline':'● Connecting';
 }
 let _tt;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'),2600);}
@@ -1346,5 +1360,7 @@ async function init(){
 
 init();
 </script>
+<script src="./gedcom.js"></script>
+<script src="./workspace.js?v=5"></script>
 </body>
 </html>
