@@ -36,3 +36,20 @@ button,input,select,textarea{font:inherit}button:focus-visible,input:focus-visib
 [data-theme=slate] body,[data-theme=slate] #cwrap,[data-theme=slate] #content-panel{background:#e8eef5}[data-theme=slate] .sbh,[data-theme=slate] .rail-btn:hover,[data-theme=slate] .rail-btn.active{background:#e0eaf3}[data-theme=slate] .pc{border-color:#d5e0eb!important;box-shadow:0 4px 20px #405b7818}[data-theme=slate] .avatar,[data-theme=slate] .list-avatar,[data-theme=slate] .ins-avatar{background-color:#dce8f2}[data-theme=slate] .brand strong,[data-theme=slate] .pc-name,[data-theme=slate] .inspector-name,[data-theme=slate] .content-head h2{font-family:'DM Sans',sans-serif;letter-spacing:-.04em}
 [data-theme=midnight] #theme-menu button:hover{background:#2b4033}[data-theme=midnight] .pc-detail{border-color:#46564b}[data-theme=midnight] .pc-detail b{color:var(--tx)}[data-theme=midnight] .list-avatar{background-color:#34513e}
 @media(max-width:900px){.theme-button{padding:0 7px}}@media(max-width:600px){.theme-button{font-size:0}.theme-button::first-letter{font-size:20px}}
+
+/* Shared states and theme details. Keep portrait backgrounds after avatar defaults. */
+.list-avatar.portrait-sprite,.ins-avatar.portrait-sprite,.avatar.portrait-sprite{background-image:url('./assets/demo-portraits.webp');background-size:500% 500%;background-repeat:no-repeat}
+.list-avatar.portrait-marta,.ins-avatar.portrait-marta,.avatar.portrait-marta{background-image:url('./assets/demo-marta.webp');background-size:cover;background-position:center}
+#zoom-controls.is-hidden{display:none}
+#theme-menu button:hover,.tool-btn:hover,.inspector-actions button:hover,.ins-section button:hover,#zoom-controls button:hover{background:color-mix(in srgb,var(--ac) 12%,var(--sb))}
+[data-theme=midnight] .pc-secondary{border-color:var(--sbb)}
+[data-theme=midnight] .rail-btn{color:var(--mu)}
+[data-theme=midnight] .btn-p,[data-theme=midnight] .btn-save,[data-theme=midnight] .primary-action{background:#496f56;color:#fff}
+[data-theme=midnight] .btn-p:hover,[data-theme=midnight] .btn-save:hover,[data-theme=midnight] .primary-action:hover{background:#3f654d}
+[data-theme=midnight] .btn-cnl,[data-theme=midnight] .child-row,[data-theme=midnight] .setup-box,[data-theme=midnight] .cinfo{background:var(--sb);color:var(--tx);border-color:var(--sbb)}
+[data-theme=midnight] .btn-cnl:hover{background:#2b4033}
+[data-theme=midnight] .btn-o:hover{background:#496f56;color:#fff}
+[data-theme=midnight] .btn-add-child{background:#2b4033;color:var(--tx);border-color:var(--sbb)}
+[data-theme=midnight] input[type=number]{background:#28342c;color:var(--tx);border-color:var(--sbb)}
+@media(max-width:900px){.toolbar-actions #theme-button{display:block}}
+@media(max-width:600px){.theme-button{font-size:0}.theme-button::first-letter{font-size:18px}#theme-menu{right:-52px}}

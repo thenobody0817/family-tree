@@ -187,6 +187,7 @@ function showView(section){
   document.querySelectorAll('.rail-btn').forEach(el=>el.classList.toggle('active',el.dataset.view===section));
   $('sidebar').classList.toggle('open',section==='settings');
   $('content-panel').hidden=section==='tree'||section==='settings';
+  $('zoom-controls').classList.toggle('is-hidden',section!=='tree'&&section!=='settings');
   renderView();
 }
 function renderView(){
@@ -212,7 +213,8 @@ function renderTimeline(){
 }
 function renderResearch(){
   const all=people();const counts=[['People',all.length],['Missing birth dates',all.filter(p=>!p.birth_date).length],['Missing birthplaces',all.filter(p=>!p.birth_place).length],['Unplaced',all.filter(p=>p.canvas_x==null).length],['No recorded parents',all.filter(p=>![...D.parentChild.values()].some(pc=>pc.child_id===p.id)).length]];
-  $('content-body').innerHTML=`<div class="summary-grid">${counts.map(([label,n])=>`<div class="summary-card"><b>${n}</b><p>${label}</p></div>`).join('')}</div><div class="ins-section" style="margin-top:28px"><h3>Next records to complete</h3><div class="people-grid">${all.filter(p=>!p.birth_date||!p.birth_place).slice(0,16).map(p=>`<button class="person-list-card" onclick="selectPerson('${p.id}');openEditPerson('${p.id}')"><strong>${esc(personName(p))}</strong><small>${!p.birth_date?'Missing birth date':'Missing birth place'}</small></button>`).join('')}</div></div>`;
+  const incomplete=all.filter(p=>!p.birth_date||!p.birth_place);
+  $('content-body').innerHTML=`<div class="summary-grid">${counts.map(([label,n])=>`<div class="summary-card"><b>${n}</b><p>${label}</p></div>`).join('')}</div><div class="ins-section" style="margin-top:28px"><h3>Next records to complete</h3>${incomplete.length?`<div class="people-grid">${incomplete.slice(0,16).map(p=>`<button class="person-list-card" onclick="selectPerson('${p.id}');openEditPerson('${p.id}')"><strong>${esc(personName(p))}</strong><small>${!p.birth_date?'Missing birth date':'Missing birth place'}</small></button>`).join('')}</div>`:'<p>All people have a recorded birth date and birthplace.</p>'}</div>`;
 }
 function updateSearch(){
   const term=$('person-search').value.trim().toLocaleLowerCase();
@@ -253,19 +255,20 @@ async function arrangeTree(){
 }
 function exportSVG(){
   const placed=[...D.persons.values()].filter(p=>p.canvas_x!=null);if(!placed.length)return showToast('No cards to export');
-  const minX=Math.max(0,Math.min(...placed.map(p=>+p.canvas_x))-60),minY=Math.max(0,Math.min(...placed.map(p=>+p.canvas_y))-60);
-  const maxX=Math.max(...placed.map(p=>+p.canvas_x+260)),maxY=Math.max(...placed.map(p=>+p.canvas_y+180));
+  const cards=placed.map(p=>({p,g:cardGeom(p.id)})).filter(({g})=>g);
+  const minX=Math.max(0,Math.min(...cards.map(({g})=>g.x))-60),minY=Math.max(0,Math.min(...cards.map(({g})=>g.y))-60);
+  const maxX=Math.max(...cards.map(({g})=>g.x+g.w+60)),maxY=Math.max(...cards.map(({g})=>g.y+g.h+60));
   const svg=svgN('svg',{xmlns:'http://www.w3.org/2000/svg',width:maxX-minX,height:maxY-minY,viewBox:`${minX} ${minY} ${maxX-minX} ${maxY-minY}`});
-  svg.appendChild(svgN('rect',{x:minX,y:minY,width:maxX-minX,height:maxY-minY,fill:'#f8faf6'}));
+  svg.appendChild(svgN('rect',{x:minX,y:minY,width:maxX-minX,height:maxY-minY,fill:getComputedStyle($('cinner')).backgroundColor}));
   const lines=svgN('g');[...$('lsvg').children].forEach(child=>lines.appendChild(child.cloneNode(true)));svg.appendChild(lines);
-  placed.forEach(p=>{
-    const x=+p.canvas_x,y=+p.canvas_y;
-    svg.appendChild(svgN('rect',{x,y,width:192,height:92,rx:13,fill:'#fff',stroke:'#dae4da'}));
+  cards.forEach(({p,g})=>{
+    const x=g.x,y=g.y;
+    svg.appendChild(svgN('rect',{x,y,width:g.w,height:g.h,rx:13,fill:getComputedStyle($('pc-'+p.id)).backgroundColor,stroke:getComputedStyle($('pc-'+p.id)).borderColor}));
     svg.appendChild(svgN('circle',{cx:x+30,cy:y+34,r:18,fill:'#dcebe1'}));
     const initial=svgN('text',{x:x+30,y:y+40,'text-anchor':'middle','font-family':'serif','font-size':20,fill:'#426b5b'});initial.textContent=(p.first_name||p.last_name||'?')[0].toUpperCase();svg.appendChild(initial);
-    const name=svgN('text',{x:x+58,y:y+30,'font-family':'sans-serif','font-size':13,'font-weight':600,fill:'#253129'});name.textContent=personName(p).slice(0,23);svg.appendChild(name);
-    const dates=svgN('text',{x:x+58,y:y+49,'font-family':'sans-serif','font-size':11,fill:'#79857a'});dates.textContent=lifespan(p);svg.appendChild(dates);
-    const place=svgN('text',{x:x+13,y:y+76,'font-family':'sans-serif','font-size':10,fill:'#79857a'});place.textContent=String(p.birth_place||p.occupation||'').slice(0,32);svg.appendChild(place);
+    const name=svgN('text',{x:x+58,y:y+30,'font-family':'sans-serif','font-size':13,'font-weight':600,fill:getComputedStyle($('pc-'+p.id)).color});name.textContent=personName(p).slice(0,23);svg.appendChild(name);
+    const dates=svgN('text',{x:x+58,y:y+49,'font-family':'sans-serif','font-size':11,fill:getComputedStyle($('pc-'+p.id).querySelector('.pc-lifespan')).color});dates.textContent=lifespan(p);svg.appendChild(dates);
+    const place=svgN('text',{x:x+13,y:y+Math.min(g.h-10,76),'font-family':'sans-serif','font-size':10,fill:getComputedStyle($('pc-'+p.id).querySelector('.pc-secondary')||$('pc-'+p.id)).color});place.textContent=String(p.birth_place||p.occupation||'').slice(0,32);svg.appendChild(place);
   });
   downloadFile('family-tree.svg',new XMLSerializer().serializeToString(svg),'image/svg+xml');showToast('SVG exported');
 }

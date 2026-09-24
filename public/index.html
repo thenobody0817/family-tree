@@ -142,7 +142,7 @@ input[type=number]:focus{border-color:var(--ac)}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,.9);color:#f5f5f5;padding:9px 24px;border-radius:24px;font-size:13px;font-weight:600;pointer-events:none;opacity:0;transition:opacity .3s;z-index:800}
 #toast.on{opacity:1}
 </style>
-<link href="./workspace.css?v=3" rel="stylesheet">
+<link href="./workspace.css?v=4" rel="stylesheet">
 </head>
 <body>
 <nav id="rail" aria-label="Main navigation">
@@ -175,6 +175,7 @@ input[type=number]:focus{border-color:var(--ac)}
 
     <div class="mf"><label for="theme-choice">Appearance</label><select id="theme-choice" onchange="setTheme(this.value)"><option value="system">System</option><option value="botanical">Botanical</option><option value="archive">Archive</option><option value="slate">Slate</option><option value="midnight">Midnight</option></select></div>
     <div class="mf"><label for="density-choice">Card density</label><select id="density-choice" onchange="setCardDensity(this.value)"><option value="compact">Compact</option><option value="standard">Standard</option><option value="detailed">Detailed</option></select></div>
+    <div class="mf-hint" style="margin-top:-8px;margin-bottom:12px">Detailed card fields appear in Detailed mode. Changing a field switches to that mode.</div>
 
     <hr class="sb-dv">
 
@@ -1147,9 +1148,9 @@ document.addEventListener('keydown',e=>{
     const open=document.querySelector('.mov.on');
     if(open)open.classList.remove('on');else cancelConnect();
   }
-  if(e.key==='Enter'&&!e.shiftKey){
-    if(document.getElementById('pmov').classList.contains('on'))savePerson();
-    if(document.getElementById('setup-ov').classList.contains('on'))saveConfig();
+  if(e.key==='Enter'&&!e.shiftKey&&e.target.matches('input:not([type=checkbox]):not([type=color]):not([type=file])')){
+    if(document.getElementById('pmov').classList.contains('on')){e.preventDefault();savePerson();}
+    if(document.getElementById('setup-ov').classList.contains('on')){e.preventDefault();saveConfig();}
   }
 });
 
@@ -1360,6 +1361,6 @@ async function init(){
 init();
 </script>
 <script src="./gedcom.js"></script>
-<script src="./workspace.js"></script>
+<script src="./workspace.js?v=4"></script>
 </body>
 </html>
